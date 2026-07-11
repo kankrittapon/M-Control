@@ -25,7 +25,8 @@ A Minecraft Forge mod designed to overhaul the camera and control system into a 
 | **`V`** | **Toggle View Mode** | Cycles through First-person, Vanilla Third-person, and the custom **Action RPG Third-person** camera. |
 | **`Hold Left Ctrl`** | **Mouse Mode** | Unlocks the mouse cursor. The camera stops moving, allowing you to click on UI, the ground, or entities. Release to snap back to Action Mode. |
 | **`Mouse Scroll`** | **Zoom In/Out** | Adjusts the camera distance dynamically (Only works in Action RPG Third-person mode). |
-| **`Click (in Mouse Mode)`** | **Point & Click** | - **Click Ground:** Walk to destination.<br>- **Click Entity (1st time):** Select as Target.<br>- **Click Entity (2nd time):** Walk to Target. |
+| **`Ctrl + Left Click (LMB)`** | **Targeting & Attacking** | - **Click & Drag:** Rotate the camera.<br>- **Click Entity (1x):** Select/Lock Target.<br>- **Click Entity (2x):** Auto-Attack Target.<br>- **Click Ground (1x):** Clear Target.<br>- **Click Ground (2x):** Auto-Mine Block. |
+| **`Ctrl + Right Click (RMB)`** | **Point & Click Movement** | - **Click Ground:** Walk to the clicked location.<br>- **Click Entity:** Walk to follow the entity. |
 | **`R`** | **Cast Magic Bolt** | Fires a magic bolt at the currently selected target (Network packet synced). |
 
 ---
