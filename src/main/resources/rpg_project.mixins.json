@@ -1,0 +1,16 @@
+{
+    "required": true,
+    "minVersion": "0.8",
+    "package": "com.zexqm.rpgproject.mixin",
+    "compatibilityLevel": "JAVA_17",
+    "refmap": "rpg_project.refmap.json",
+    "client": [
+        "MouseHandlerMixin",
+        "CameraMixin",
+        "LivingEntityMixin",
+        "EntityMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

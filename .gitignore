@@ -1,0 +1,36 @@
+# Gradle
+.gradle/
+build/
+out/
+bin/
+
+# Minecraft Forge / NeoForge
+run/
+run-data/
+logs/
+crash-reports/
+
+# IDEs
+.idea/
+*.iml
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+
+# Antigravity & Agent artifacts
+.agents/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Media & Heavy Files (Screenshots, Videos)
+*.mkv
+*.mp4
+*.avi
+*.jpg
+*.jpeg
+*.png
+*.gif

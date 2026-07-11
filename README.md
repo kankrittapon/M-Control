@@ -1,0 +1,56 @@
+# M-Control (Minecraft RPG Control)
+
+A Minecraft Forge mod designed to overhaul the camera and control system into a modern **Action RPG style** (inspired by Black Desert Online). It seamlessly blends fast-paced action combat camera with hybrid point-and-click movement.
+
+🔗 **Repository:** [https://github.com/kankrittapon/M-Control.git](https://github.com/kankrittapon/M-Control.git)
+
+---
+
+## 🌟 Currently Working Features
+
+* **BDO-Style Independent Camera:** Freely orbit the camera around your character without forcing the character's body to turn.
+* **Over-the-Shoulder Perspective:** The camera is offset to the right and slightly up, providing a clear view of the crosshair and enemies.
+* **Smooth Camera & Scroll Zoom:** Interpolated camera rotation for a cinematic, non-jittery feel. Supports zooming in/out via the mouse scroll wheel with built-in wall collision detection.
+* **Hybrid Control System:** Instantly transition between crosshair-based **Action Mode** and cursor-based **Mouse Mode**.
+* **Smart Click-to-Move:** Auto-pathing to clicked destinations. Features intelligent Line-of-Sight (LOS) checks to prevent getting stuck on cliffs, and Auto-mantling (steps over obstacles up to 1.25 blocks high automatically).
+* **Two-Step Entity Targeting:** Click an enemy once to lock on (Target Selection + Glow Effect). Click again to issue a move command towards them.
+* **Dynamic Crosshair & Floating UI:** Completely replaces the vanilla crosshair with a contextual UI that reacts to what you are aiming at.
+
+---
+
+## 🎮 How to Use (Controls & Menus)
+
+| Key Binding | Action | Description |
+| :--- | :--- | :--- |
+| **`V`** | **Toggle View Mode** | Cycles through First-person, Vanilla Third-person, and the custom **Action RPG Third-person** camera. |
+| **`Hold Left Ctrl`** | **Mouse Mode** | Unlocks the mouse cursor. The camera stops moving, allowing you to click on UI, the ground, or entities. Release to snap back to Action Mode. |
+| **`Mouse Scroll`** | **Zoom In/Out** | Adjusts the camera distance dynamically (Only works in Action RPG Third-person mode). |
+| **`Click (in Mouse Mode)`** | **Point & Click** | - **Click Ground:** Walk to destination.<br>- **Click Entity (1st time):** Select as Target.<br>- **Click Entity (2nd time):** Walk to Target. |
+| **`R`** | **Cast Magic Bolt** | Fires a magic bolt at the currently selected target (Network packet synced). |
+
+---
+
+## 🎯 Dynamic UI (HP Bar & Target Display)
+
+M-Control features an immersive, clutter-free UI system tailored for action combat:
+
+1. **Dynamic Crosshair (Action Mode):**
+   * The vanilla crosshair is hidden. When looking around normally, a minimal white dot is shown.
+   * When aiming at an entity, the crosshair transforms into a **Red Combat Reticle**.
+   * The hovered monster's **Name and HP Bar** dynamically float right underneath the center crosshair.
+2. **Floating Cursor UI (Mouse Mode):**
+   * When holding `Ctrl` and hovering the free cursor over a monster, their Name and HP Bar will float directly next to your mouse pointer.
+3. **Locked Target System:**
+   * Once an entity is clicked and selected, a distinct **Glowing Aura** is applied to them (Custom render mixin, no potion effects required).
+   * The locked target's Name and larger HP Bar are pinned to the top center of the screen so you can monitor their health even while looking away.
+4. **Player HUD:**
+   * Custom stylized HP (Red) and MP/Mana (Blue) bars are displayed cleanly at the bottom center of the screen.
+
+---
+
+## 🛠️ Development Log (What We Did)
+
+* **Camera Engine:** Built `ClientCameraController` to decouple yaw/pitch from the player entity. Injected via `CameraMixin` for precise shoulder offsets and safe-distance raycasting.
+* **Control State Machine:** Created `ClientControlState` to handle `IDLE`, `MANUAL`, and `NAVIGATING` states. Uses `MovementInputUpdateEvent` to seamlessly inject movement impulses without vanilla keyboard interference.
+* **UI Rendering:** Overrode `RenderGuiOverlayEvent.Pre` to disable Vanilla `CROSSHAIR`, replacing it entirely in `RenderGuiOverlayEvent.Post` with our context-aware Dynamic Crosshair.
+* **Targeting Logic:** Developed `MouseWorldPicker` and `ClientTargeting` to handle precise 3D raycasting and bounding-box collision for entity selection, allowing a smooth Two-Step Targeting flow.

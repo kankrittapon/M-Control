@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="rpg_project"
+version="${file.jarVersion}"
+displayName="Minecraft RPG Project"
+authors="zexqm"
+description='''Action RPG Wizard prototype for Minecraft Forge 1.20.1.'''
+
+[[dependencies.rpg_project]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.rpg_project]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.21)"
+ordering="NONE"
+side="BOTH"
+
+[[mixins]]
+config="rpg_project.mixins.json"
