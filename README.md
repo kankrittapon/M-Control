@@ -31,21 +31,16 @@ A Minecraft Forge mod designed to overhaul the camera and control system into a 
 
 ---
 
-## 🎯 Dynamic UI (HP Bar & Target Display)
+## 🎯 Dynamic Target System
 
-M-Control features an immersive, clutter-free UI system tailored for action combat:
+To keep the screen clean and allow maximum compatibility with dedicated UI mods (like Neat or Jade), M-Control focuses purely on targeting mechanics:
 
 1. **Dynamic Crosshair (Action Mode):**
    * The vanilla crosshair is hidden. When looking around normally, a minimal white dot is shown.
-   * When aiming at an entity, the crosshair transforms into a **Red Combat Reticle**.
-   * The hovered monster's **Name and HP Bar** dynamically float right underneath the center crosshair.
-2. **Floating Cursor UI (Mouse Mode):**
-   * When holding `Ctrl` and hovering the free cursor over a monster, their Name and HP Bar will float directly next to your mouse pointer.
-3. **Locked Target System:**
+   * When aiming at an entity, the crosshair transforms into a **Red Combat Reticle**, giving you immediate feedback that you are aiming at a valid target.
+2. **Locked Target Aura:**
    * Once an entity is clicked and selected, a distinct **Glowing Aura** is applied to them (Custom render mixin, no potion effects required).
-   * The locked target's Name and larger HP Bar are pinned to the top center of the screen so you can monitor their health even while looking away.
-4. **Player HUD:**
-   * Custom stylized HP (Red) and MP/Mana (Blue) bars are displayed cleanly at the bottom center of the screen.
+   * This lets you easily track your currently locked target even if they move into a crowd.
 
 ---
 

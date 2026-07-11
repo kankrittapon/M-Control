@@ -187,14 +187,6 @@ public final class ClientEvents {
         GuiGraphics graphics = event.getGuiGraphics();
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
-        int barWidth = 96;
-        int x = width / 2 - 91;
-        int y = height - 59;
-
-        drawBar(graphics, x, y, barWidth, 8, player.getHealth() / player.getMaxHealth(), 0xFF5C1515, 0xFFE04242);
-        drawBar(graphics, x, y + 11, barWidth, 8, (float) ClientMana.mana() / ClientMana.maxMana(), 0xFF102348, 0xFF3390FF);
-        graphics.drawString(minecraft.font, "HP " + Math.round(player.getHealth()) + "/" + Math.round(player.getMaxHealth()), x + 2, y - 9, 0xFFFFFFFF, true);
-        graphics.drawString(minecraft.font, "MP " + ClientMana.mana() + "/" + ClientMana.maxMana(), x + 2, y + 21, 0xFFFFFFFF, true);
 
         // Dynamic Crosshair / Target Info
         if (ClientControlState.isThirdPerson()) {
@@ -207,60 +199,15 @@ public final class ClientEvents {
                     // Hostile/Active crosshair
                     graphics.fill(width / 2 - 4, height / 2 - 1, width / 2 + 4, height / 2 + 1, 0xFFFF3333);
                     graphics.fill(width / 2 - 1, height / 2 - 4, width / 2 + 1, height / 2 + 4, 0xFFFF3333);
-                    
-                    int hpBarWidth = 40;
-                    float hpPercent = living.getHealth() / living.getMaxHealth();
-                    drawBar(graphics, width / 2 - hpBarWidth / 2, height / 2 + 10, hpBarWidth, 4, hpPercent, 0xAA000000, 0xFFFF3333);
-                    graphics.drawCenteredString(minecraft.font, living.getDisplayName(), width / 2, height / 2 + 16, 0xFFFFFFFF);
                 } else {
                     // Normal crosshair
                     graphics.fill(width / 2 - 1, height / 2 - 1, width / 2 + 1, height / 2 + 1, 0xAAFFFFFF);
                 }
             } else {
-                // Mouse Mode: HUD indicator and floating info at cursor
+                // Mouse Mode: HUD indicator
                 graphics.drawCenteredString(minecraft.font, Component.translatable("message.rpg_project.mouse_mode.hud"), width / 2, height / 2 + 40, 0xFFE6F7FF);
-                
-                EntityHitResult ehr = ClientAim.fromCursor(minecraft).entityHit();
-                if (ehr != null && ehr.getEntity() instanceof LivingEntity living && living.isAlive()) {
-                    double mouseX = minecraft.mouseHandler.xpos() * width / minecraft.getWindow().getScreenWidth();
-                    double mouseY = minecraft.mouseHandler.ypos() * height / minecraft.getWindow().getScreenHeight();
-                    int mx = (int) mouseX;
-                    int my = (int) mouseY;
-
-                    int hpBarWidth = 40;
-                    float hpPercent = living.getHealth() / living.getMaxHealth();
-                    drawBar(graphics, mx - hpBarWidth / 2, my + 15, hpBarWidth, 4, hpPercent, 0xAA000000, 0xFFFF3333);
-                    graphics.drawCenteredString(minecraft.font, living.getDisplayName(), mx, my + 21, 0xFFFFFFFF);
-                }
-            }
-            
-            // Draw selected target info globally if we have one and we aren't already hovering it
-            if (ClientTargeting.targetId() >= 0) {
-                Entity targetEntity = minecraft.level.getEntity(ClientTargeting.targetId());
-                boolean isHoveringTarget = false;
-                
-                EntityHitResult hovered = ClientAim.current(minecraft).entityHit();
-                if (hovered != null && hovered.getEntity() == targetEntity) {
-                    isHoveringTarget = true;
-                }
-                
-                if (!isHoveringTarget && targetEntity instanceof LivingEntity living && living.isAlive()) {
-                    Component targetText = Component.literal("Target: ").append(living.getDisplayName()).withStyle(ChatFormatting.AQUA);
-                    graphics.drawCenteredString(minecraft.font, targetText, width / 2, 20, 0xFFFFFFFF);
-                    
-                    int hpBarWidth = 100;
-                    float hpPercent = living.getHealth() / living.getMaxHealth();
-                    drawBar(graphics, width / 2 - hpBarWidth / 2, 32, hpBarWidth, 6, hpPercent, 0xAA000000, 0xFFFF3333);
-                }
             }
         }
-    }
-
-    private static void drawBar(GuiGraphics graphics, int x, int y, int width, int height, float fill, int backgroundColor, int fillColor) {
-        int clampedFill = Math.max(0, Math.min(width, Math.round(width * fill)));
-        graphics.fill(x - 1, y - 1, x + width + 1, y + height + 1, 0xCC000000);
-        graphics.fill(x, y, x + width, y + height, backgroundColor);
-        graphics.fill(x, y, x + clampedFill, y + height, fillColor);
     }
 
     private static void selectTarget(Minecraft minecraft) {
