@@ -16,6 +16,11 @@ public class Mana {
         return maxMana;
     }
 
+    public void setMaxMana(int value) {
+        maxMana = Math.max(0, value);
+        mana = Math.min(mana, maxMana);
+    }
+
     public int getRegenPerSecond() {
         return regenPerSecond;
     }

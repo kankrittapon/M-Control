@@ -2,7 +2,7 @@ package com.zexqm.rpgproject.rpg;
 
 public enum RpgClass {
     WIZARD("wizard"),
-    CORSAIR("corsair");
+    NINJA("ninja");
 
     private final String id;
 

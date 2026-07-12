@@ -3,8 +3,8 @@ package com.zexqm.rpgproject;
 import com.mojang.logging.LogUtils;
 import com.zexqm.rpgproject.network.RpgNetwork;
 import com.zexqm.rpgproject.registry.ModCreativeTabs;
-import com.zexqm.rpgproject.registry.ModEntities;
 import com.zexqm.rpgproject.registry.ModItems;
+import com.zexqm.rpgproject.registry.ModAttributes;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -18,7 +18,7 @@ public class RpgProject {
     public RpgProject() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         ModItems.ITEMS.register(modBus);
-        ModEntities.ENTITY_TYPES.register(modBus);
+        ModAttributes.ATTRIBUTES.register(modBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modBus);
         RpgNetwork.register();
     }

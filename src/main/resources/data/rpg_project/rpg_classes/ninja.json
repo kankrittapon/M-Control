@@ -1,0 +1,10 @@
+{
+  "healthBase": 105.0, "healthPerLevel": 8.0,
+  "manaBase": 85.0, "manaPerLevel": 6.0,
+  "attackBase": 16.0, "attackPerLevel": 2.8,
+  "magicBase": 7.0, "magicPerLevel": 1.0,
+  "defenseBase": 8.0, "defensePerLevel": 1.2,
+  "accuracyBase": 105.0, "accuracyPerLevel": 2.2,
+  "evasionBase": 70.0, "evasionPerLevel": 1.8,
+  "attackSpeed": 1.14, "castSpeed": 1.0, "moveSpeed": 1.08, "ccResistance": 0.0
+}

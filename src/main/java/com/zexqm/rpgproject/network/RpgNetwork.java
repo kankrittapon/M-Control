@@ -22,11 +22,12 @@ public final class RpgNetwork {
                 .decoder(SyncManaPacket::decode)
                 .consumerMainThread(SyncManaPacket::handle)
                 .add();
-        CHANNEL.messageBuilder(CastMagicBoltPacket.class, id)
-                .encoder(CastMagicBoltPacket::encode)
-                .decoder(CastMagicBoltPacket::decode)
-                .consumerMainThread(CastMagicBoltPacket::handle)
-                .add();
+        CHANNEL.messageBuilder(SyncRpgDataPacket.class, id++)
+                .encoder(SyncRpgDataPacket::encode).decoder(SyncRpgDataPacket::decode)
+                .consumerMainThread(SyncRpgDataPacket::handle).add();
+        CHANNEL.messageBuilder(ToggleCombatPacket.class, id)
+                .encoder(ToggleCombatPacket::encode).decoder(ToggleCombatPacket::decode)
+                .consumerMainThread(ToggleCombatPacket::handle).add();
     }
 
     private RpgNetwork() {

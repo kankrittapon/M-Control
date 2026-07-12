@@ -3,8 +3,8 @@ package com.zexqm.rpgproject.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.zexqm.rpgproject.RpgProject;
 import com.zexqm.rpgproject.mana.ClientMana;
-import com.zexqm.rpgproject.network.CastMagicBoltPacket;
 import com.zexqm.rpgproject.network.RpgNetwork;
+import com.zexqm.rpgproject.network.ToggleCombatPacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -29,6 +29,7 @@ import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
@@ -52,12 +53,8 @@ public final class ClientEvents {
             GLFW.GLFW_KEY_LEFT_CONTROL,
             "key.categories.rpg_project"
     );
-    public static final KeyMapping CAST_MAGIC_BOLT = new KeyMapping(
-            "key.rpg_project.cast_magic_bolt",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_R,
-            "key.categories.rpg_project"
-    );
+    public static final KeyMapping TOGGLE_COMBAT = new KeyMapping("key.rpg_project.toggle_combat",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_TAB, "key.categories.rpg_project");
 
     @Mod.EventBusSubscriber(modid = RpgProject.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static final class ModBusEvents {
@@ -65,7 +62,7 @@ public final class ClientEvents {
         public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
             event.register(TOGGLE_VIEW_MODE);
             event.register(TOGGLE_MOUSE_MOVEMENT);
-            event.register(CAST_MAGIC_BOLT);
+            event.register(TOGGLE_COMBAT);
         }
     }
 
@@ -94,12 +91,7 @@ public final class ClientEvents {
         ClientControlState.tick(minecraft);
         ClientTargeting.tick(minecraft);
 
-        while (CAST_MAGIC_BOLT.consumeClick()) {
-            ClientAim.AimResult aim = ClientAim.current(minecraft);
-            Vec3 direction = aim.targetPoint().subtract(minecraft.player.getEyePosition()).normalize();
-            facePlayerToward(minecraft, direction);
-            RpgNetwork.CHANNEL.sendToServer(new CastMagicBoltPacket(direction));
-        }
+        while (TOGGLE_COMBAT.consumeClick()) RpgNetwork.CHANNEL.sendToServer(new ToggleCombatPacket());
 
         while (!ClientControlState.isMouseMovementMode() && minecraft.options.keyAttack.consumeClick()) {
             selectTarget(minecraft);
@@ -147,6 +139,21 @@ public final class ClientEvents {
     }
 
     @SubscribeEvent
+    public static void blockAttack(PlayerInteractEvent.LeftClickBlock event) {
+        if (isLocalThirdPersonInteraction(event.getEntity())) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void blockUse(PlayerInteractEvent.RightClickBlock event) {
+        if (isLocalThirdPersonInteraction(event.getEntity())) {
+            event.setCanceled(true);
+            event.setCancellationResult(net.minecraft.world.InteractionResult.FAIL);
+        }
+    }
+
+    @SubscribeEvent
     public static void mouseScroll(InputEvent.MouseScrollingEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.screen == null && ClientControlState.isThirdPerson() && shouldZoomCamera(minecraft)) {
@@ -158,6 +165,26 @@ public final class ClientEvents {
     @SubscribeEvent
     public static void onMovementInput(MovementInputUpdateEvent event) {
         if (ClientControlState.isAutoMoving()) {
+            event.getInput().up = true;
+            event.getInput().down = false;
+            event.getInput().left = false;
+            event.getInput().right = false;
+            event.getInput().forwardImpulse = 1.0F;
+            event.getInput().leftImpulse = 0.0F;
+            return;
+        }
+
+        Minecraft minecraft = Minecraft.getInstance();
+        Player player = minecraft.player;
+        if (player == null || !ClientControlState.isThirdPerson()
+                || player.isInWaterOrBubble() || player.isInLava()) {
+            return;
+        }
+
+        // LivingEntityMixin already turns the player toward the camera-relative
+        // WASD direction. Feed that direction to vanilla as forward movement only;
+        // retaining the original strafe impulse would rotate it a second time.
+        if (event.getInput().forwardImpulse != 0.0F || event.getInput().leftImpulse != 0.0F) {
             event.getInput().up = true;
             event.getInput().down = false;
             event.getInput().left = false;
@@ -208,6 +235,16 @@ public final class ClientEvents {
                 graphics.drawCenteredString(minecraft.font, Component.translatable("message.rpg_project.mouse_mode.hud"), width / 2, height / 2 + 40, 0xFFE6F7FF);
             }
         }
+
+        double staminaMax = ClientRpgData.maxStamina();
+        if (ClientControlState.isThirdPerson() && staminaMax > 0 && ClientRpgData.stamina() < staminaMax - 0.5) {
+            int barWidth = 120;
+            int x = (width - barWidth) / 2;
+            int y = height - 58;
+            int filled = (int) Math.round(barWidth * Math.max(0.0, ClientRpgData.stamina()) / staminaMax);
+            graphics.fill(x - 1, y - 1, x + barWidth + 1, y + 6, 0xAA101418);
+            graphics.fill(x, y, x + filled, y + 5, 0xFFE2C24F);
+        }
     }
 
     private static void selectTarget(Minecraft minecraft) {
@@ -251,13 +288,6 @@ public final class ClientEvents {
         HitResult blockHit = ClientAim.fromCursor(minecraft).blockHit();
         if (blockHit instanceof BlockHitResult bhr && blockHit.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = bhr.getBlockPos();
-            if (pos.equals(lastLeftClickBlockPos) && now - lastLeftClickTime <= DOUBLE_CLICK_MS) {
-                ClientControlState.startAutoMineBlock(pos, bhr.getDirection());
-                minecraft.player.displayClientMessage(Component.translatable("message.rpg_project.attack.block"), true);
-                resetDoubleClick();
-                return;
-            }
-
             rememberBlockClick(pos, now);
         } else {
             resetDoubleClick();
@@ -265,6 +295,13 @@ public final class ClientEvents {
 
         ClientTargeting.clear();
         minecraft.player.displayClientMessage(Component.translatable("message.rpg_project.target.cleared"), true);
+    }
+
+    private static boolean isLocalThirdPersonInteraction(Player player) {
+        Minecraft minecraft = Minecraft.getInstance();
+        return player.level().isClientSide
+                && minecraft.player == player
+                && ClientControlState.isThirdPerson();
     }
 
     /** Right click issues movement commands only: entity follow or ground move. */

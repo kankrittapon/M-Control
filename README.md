@@ -1,52 +1,167 @@
-# M-Control (Minecraft RPG Control)
+# M-Control
 
-A Minecraft Forge mod designed to overhaul the camera and control system into a modern **Action RPG style** (inspired by Black Desert Online). It seamlessly blends fast-paced action combat camera with hybrid point-and-click movement.
+Minecraft Forge 1.20.1 action-RPG control and world-core mod. The project currently focuses on
+server-authoritative progression, combat calculations, camera controls, and reusable class systems.
+Class-specific skills, models, and animations are intentionally deferred until the world core is stable.
 
-🔗 **Repository:** [https://github.com/kankrittapon/M-Control.git](https://github.com/kankrittapon/M-Control.git)
+## Requirements
 
----
+- Minecraft 1.20.1
+- Minecraft Forge 47.x
+- Java 17
 
-## 🌟 Currently Working Features
+## Working Systems
 
-* **BDO-Style Independent Camera:** Freely orbit the camera around your character without forcing the character's body to turn.
-* **Over-the-Shoulder Perspective:** The camera is offset to the right and slightly up, providing a clear view of the crosshair and enemies.
-* **Smooth Camera & Scroll Zoom:** Interpolated camera rotation for a cinematic, non-jittery feel. Supports zooming in/out via the mouse scroll wheel with built-in wall collision detection.
-* **Hybrid Control System:** Instantly transition between crosshair-based **Action Mode** and cursor-based **Mouse Mode**.
-* **Smart Click-to-Move:** Auto-pathing to clicked destinations. Features intelligent Line-of-Sight (LOS) checks to prevent getting stuck on cliffs, and Auto-mantling (steps over obstacles up to 1.25 blocks high automatically).
-* **Two-Step Entity Targeting:** Click an enemy once to lock on (Target Selection + Glow Effect). Click again to issue a move command towards them.
-* **Dynamic Crosshair & Floating UI:** Completely replaces the vanilla crosshair with a contextual UI that reacts to what you are aiming at.
+### RPG Controls
 
----
+- Independent third-person camera anchored to the player.
+- Smooth orbit, shoulder offset, collision-safe camera distance, and scroll zoom.
+- Action camera and hold-`Ctrl` cursor mode.
+- `Ctrl + LMB` drag rotates the camera without rotating the player.
+- Left-click selects an entity for UI/context; selection is not a hard skill lock.
+- Double left-click on an entity starts auto-attack and chase.
+- Right-click ground issues click-to-move; right-click entity issues move-to-target.
+- WASD and jump cancel automatic movement.
+- Water and lava preserve vanilla movement.
+- Third-person RPG mode blocks vanilla block breaking and placement.
+- First-person mode preserves vanilla Minecraft interactions.
 
-## 🎮 How to Use (Controls & Menus)
+### Class And Equipment Core
 
-| Key Binding | Action | Description |
-| :--- | :--- | :--- |
-| **`V`** | **Toggle View Mode** | Cycles through First-person, Vanilla Third-person, and the custom **Action RPG Third-person** camera. |
-| **`Hold Left Ctrl`** | **Mouse Mode** | Unlocks the mouse cursor. The camera stops moving, allowing you to click on UI, the ground, or entities. Release to snap back to Action Mode. |
-| **`Mouse Scroll`** | **Zoom In/Out** | Adjusts the camera distance dynamically (Only works in Action RPG Third-person mode). |
-| **`Ctrl + Left Click (LMB)`** | **Targeting & Attacking** | - **Click & Drag:** Rotate the camera.<br>- **Click Entity (1x):** Select/Lock Target.<br>- **Click Entity (2x):** Auto-Attack Target.<br>- **Click Ground (1x):** Clear Target.<br>- **Click Ground (2x):** Auto-Mine Block. |
-| **`Ctrl + Right Click (RMB)`** | **Point & Click Movement** | - **Click Ground:** Walk to the clicked location.<br>- **Click Entity:** Walk to follow the entity. |
-| **`R`** | **Cast Magic Bolt** | Fires a magic bolt at the currently selected target (Network packet synced). |
+- Classes: `WIZARD` and `NINJA`.
+- Specializations: `SUCCESSION` and `AWAKENING`.
+- Logical Main, Sub, and Awakening weapon slots persisted in player data.
+- Wizard weapon types: Staff, Dagger, and Sphera.
+- Ninja weapon types: Shortsword, Shuriken, and Sura Katana.
+- Server validates weapon class and slot.
+- `Tab` toggles logical Draw/Sheathe state when required weapons are equipped.
+- Draw/Sheathe currently has no model or animation.
 
----
+### Player Progression
 
-## 🎯 Dynamic Target System
+- Character levels 1-100.
+- Persistent EXP with overflow across multiple level-ups.
+- One Skill Point per level gained.
+- Separate total, spent, and available Skill Point values.
+- EXP rewards from killing living entities.
+- Player data persists through save/load, death, respawn, and dimension changes.
+- Wizard and Ninja have different health, mana, offense, defense, accuracy, and evasion growth.
 
-To keep the screen clean and allow maximum compatibility with dedicated UI mods (like Neat or Jade), M-Control focuses purely on targeting mechanics:
+### Global Attributes And Damage
 
-1. **Dynamic Crosshair (Action Mode):**
-   * The vanilla crosshair is hidden. When looking around normally, a minimal white dot is shown.
-   * When aiming at an entity, the crosshair transforms into a **Red Combat Reticle**, giving you immediate feedback that you are aiming at a valid target.
-2. **Locked Target Aura:**
-   * Once an entity is clicked and selected, a distinct **Glowing Aura** is applied to them (Custom render mixin, no potion effects required).
-   * This lets you easily track your currently locked target even if they move into a crowd.
+- Data-driven class base stats and per-level growth.
+- Custom synced attributes for Attack Power, Magic Power, Defense, Damage Reduction,
+  Accuracy, Evasion, Critical Chance, Critical Damage, Cast Speed, and CC Resistance.
+- Max Health, Max Mana, and Movement Speed bridge into the player runtime.
+- Server damage order: Accuracy/Evasion, Attack Power, Critical, then Damage Reduction.
+- Hit chance is clamped to 10-95%; Damage Reduction is capped at 80%.
+- Current formulas are tuning defaults, not final balance.
 
----
+### Training, Stamina, And Weight
 
-## 🛠️ Development Log (What We Did)
+- Breath, Strength, and Health training levels range from 1-50.
+- Breath increases maximum stamina and stamina regeneration.
+- Sprint drains stamina and stops when stamina is exhausted.
+- Breath gains training EXP from sprint distance.
+- Strength increases carrying capacity and gains EXP while moving above 70% load.
+- Inventory, armor, offhand items, and RPG weapons contribute weight.
+- Weight above 70% reduces movement speed; weight at or above 100% disables sprint.
+- Health training gains EXP from recovered health and increases Max Health.
+- A stamina bar appears in RPG third-person while stamina is not full.
 
-* **Camera Engine:** Built `ClientCameraController` to decouple yaw/pitch from the player entity. Injected via `CameraMixin` for precise shoulder offsets and safe-distance raycasting.
-* **Control State Machine:** Created `ClientControlState` to handle `IDLE`, `MANUAL`, and `NAVIGATING` states. Uses `MovementInputUpdateEvent` to seamlessly inject movement impulses without vanilla keyboard interference.
-* **UI Rendering:** Overrode `RenderGuiOverlayEvent.Pre` to disable Vanilla `CROSSHAIR`, replacing it entirely in `RenderGuiOverlayEvent.Post` with our context-aware Dynamic Crosshair.
-* **Targeting Logic:** Developed `MouseWorldPicker` and `ClientTargeting` to handle precise 3D raycasting and bounding-box collision for entity selection, allowing a smooth Two-Step Targeting flow.
+### Protection And Crowd Control Core
+
+- Front Guard protects a 180-degree frontal arc and consumes Guard Gauge.
+- Side and rear damage bypass Front Guard.
+- Iframe cancels eligible incoming damage.
+- Super Armor, Grab Immunity, and shared CC resolution contracts are available to future skills.
+- CC types include stiffness, stun, freeze, knockback, knockdown, bound, float, and grab.
+- Protection states are server-authoritative and tick-based.
+
+### Mob Level And World Scaling
+
+- Mobs receive a persistent level when first spawned.
+- Overworld levels range from 1-60, Nether from 30-80, and End from 60-100.
+- Level considers dimension, distance from world spawn, and small random variation.
+- Mob level applies stable Max Health and Attack Damage modifiers.
+- Saved mobs do not receive duplicate scaling modifiers when reloaded.
+- EXP rewards use the mob's resulting Max Health.
+
+### Generic Skill Contract
+
+The project contains only reusable skill definitions, not playable class skills. The contract supports
+targeting type, class and specialization requirements, weapon requirements, mana/stamina costs,
+cooldown, cast/recovery time, range, radius, and damage coefficient.
+
+## Controls
+
+| Input | Action |
+| --- | --- |
+| `V` | Toggle first-person and RPG third-person view |
+| Hold `Left Ctrl` | Enter cursor command mode |
+| `Ctrl + LMB drag` | Orbit the third-person camera |
+| `Ctrl + LMB entity` | Select entity; double-click starts auto-attack |
+| `Ctrl + RMB ground/entity` | Move to ground destination or follow entity |
+| Mouse wheel | Adjust RPG third-person camera distance |
+| `Tab` | Toggle logical weapon Draw/Sheathe state |
+
+`Tab` shares the vanilla player-list key until input ownership is finalized.
+
+## Data Configuration
+
+Class growth profiles are loaded from:
+
+```text
+src/main/resources/data/rpg_project/rpg_classes/wizard.json
+src/main/resources/data/rpg_project/rpg_classes/ninja.json
+```
+
+Run `/reload` after changing a profile. Invalid or missing profiles fall back to Java defaults.
+
+## Development Commands
+
+```mcfunction
+/rpg class wizard
+/rpg class ninja
+/rpg specialization succession
+/rpg specialization awakening
+/rpg equip
+/rpg status
+/rpg addxp 1000
+/rpg setlevel 50
+/rpg protection fg 200
+/rpg protection sa 200
+/rpg protection iframe 100
+/rpg protection grab_immune 200
+```
+
+`/rpg equip` equips the RPG weapon currently held in the main hand into its logical slot.
+
+Example Wizard test setup:
+
+```mcfunction
+/rpg class wizard
+/give @s rpg_project:wizard_staff 1
+/rpg equip
+/give @s rpg_project:wizard_dagger 1
+/rpg equip
+/rpg status
+```
+
+## Not Implemented Yet
+
+- Equipment screen for the three RPG weapon slots.
+- Visible Draw/Sheathe weapon models and player animations.
+- Playable Wizard or Ninja skills and skill trees.
+- Skill Point spending UI.
+- Full application of SA/CC/Grab through playable skills.
+- Mob level display and data-driven world-region rules.
+- Final stat, EXP, stamina, weight, and damage balancing.
+- Gem, Apotheosis, enchantment, and enhancement integration.
+
+## Build And Run
+
+```powershell
+.\gradlew.bat build
+.\gradlew.bat runClient
+```
