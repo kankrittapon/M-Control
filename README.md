@@ -261,6 +261,7 @@ presentation are added.
 
 ### Phases 13-15: GeckoLib And Presentation
 
+- Follow the separate Blockbench/GeckoLib contract in [`AnimationP.md`](AnimationP.md).
 - Pin a Forge 1.20.1-compatible GeckoLib version and add draw, cast, hit, recovery, cancel, and
   sheathe animation events without moving combat timing away from the server.
 - Integrate Blockbench Staff, Dagger, Wizard, and weapon animations after event fallback is stable.
