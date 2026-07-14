@@ -9,7 +9,7 @@ public final class SkillLearningService {
     public static SkillAvailability availability(RpgPlayerData data, ResourceLocation skillId) {
         SkillCatalogEntry skill = SkillCatalog.get(skillId);
         if (skill == null) return SkillAvailability.UNKNOWN_SKILL;
-        if (!skill.playable() || SkillRegistry.get(skillId) == null) return SkillAvailability.METADATA_ONLY;
+        if (!skill.playable()) return SkillAvailability.METADATA_ONLY;
         if (skill.rpgClass() != data.rpgClass()) return SkillAvailability.WRONG_CLASS;
         if (skill.tree() == SkillTree.SUCCESSION
                 && data.specialization() != com.zexqm.rpgproject.rpg.Specialization.SUCCESSION
@@ -19,7 +19,9 @@ public final class SkillLearningService {
         int current = data.skillProgress().rank(skillId);
         if (current >= skill.maximumRank()) return SkillAvailability.MAX_RANK;
         SkillRankDefinition next = skill.rank(current + 1);
-        if (next == null) return SkillAvailability.METADATA_ONLY;
+        SkillDefinition combat = SkillRegistry.get(skillId, current + 1);
+        if (next == null || combat == null || combat.debugOnly() || combat.rpgClass() != skill.rpgClass())
+            return SkillAvailability.METADATA_ONLY;
         if (data.level() < next.requiredLevel()) return SkillAvailability.LEVEL_REQUIRED;
         for (SkillRequirement requirement : skill.prerequisites())
             if (data.skillProgress().rank(requirement.skillId()) < requirement.minimumRank())

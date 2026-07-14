@@ -16,9 +16,13 @@ public class Mana {
         return maxMana;
     }
 
+    public void setMana(int value) {
+        mana = Math.max(0, Math.min(value, maxMana));
+    }
+
     public void setMaxMana(int value) {
         maxMana = Math.max(0, value);
-        mana = Math.min(mana, maxMana);
+        mana = Math.max(0, Math.min(mana, maxMana));
     }
 
     public int getRegenPerSecond() {
@@ -31,6 +35,20 @@ public class Mana {
         }
         mana -= amount;
         return true;
+    }
+
+    public int restore(int amount) {
+        if (amount <= 0) return 0;
+        int before = mana;
+        mana = Math.min(maxMana, mana + amount);
+        return mana - before;
+    }
+
+    public int drain(int amount) {
+        if (amount <= 0) return 0;
+        int drained = Math.min(mana, amount);
+        mana -= drained;
+        return drained;
     }
 
     public void tickRegen() {

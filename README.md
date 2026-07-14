@@ -4,6 +4,8 @@ Minecraft Forge 1.20.1 action-RPG control and world-core mod. The project curren
 server-authoritative progression, combat calculations, camera controls, and reusable class systems.
 Playable class skills, models, and animations are intentionally deferred until their catalog data is complete.
 
+Current checkpoint: [`TASK.md`](TASK.md) | [`PHASE.md`](PHASE.md) | [`WhatIdo.md`](WhatIdo.md)
+
 ## Requirements
 
 - Minecraft 1.20.1
@@ -17,10 +19,12 @@ Playable class skills, models, and animations are intentionally deferred until t
 - Independent third-person camera anchored to the player.
 - Smooth orbit, shoulder offset, collision-safe camera distance, and scroll zoom.
 - Action camera and hold-`Ctrl` cursor mode.
-- `Ctrl + LMB` drag rotates the camera without rotating the player.
+- Idle mouse movement rotates the camera without rotating the player.
+- Camera-relative WASD supports eight directions; moving body yaw follows the reticle while camera
+  yaw remains independent.
 - Left-click selects an entity for UI/context; selection is not a hard skill lock.
 - Double left-click on an entity starts auto-attack and chase.
-- Right-click ground issues click-to-move; right-click entity issues move-to-target.
+- `Ctrl + RMB` on ground issues click-to-move; `Ctrl + RMB` on an entity issues move-to-target.
 - WASD and jump cancel automatic movement.
 - Water and lava preserve vanilla movement.
 - Third-person RPG mode blocks vanilla block breaking and placement.
@@ -135,7 +139,7 @@ Playable class skills, models, and animations are intentionally deferred until t
 | --- | --- |
 | `V` | Toggle first-person and RPG third-person view |
 | Hold `Left Ctrl` | Enter cursor command mode |
-| `Ctrl + LMB drag` | Orbit the third-person camera |
+| Mouse movement without `Ctrl` | Orbit the idle third-person camera |
 | `Ctrl + LMB entity` | Select entity; double-click starts auto-attack |
 | `Ctrl + RMB ground/entity` | Move to ground destination or follow entity |
 | Mouse wheel | Adjust RPG third-person camera distance |
@@ -218,11 +222,42 @@ presentation are added.
 
 ### Phase 5: Wizard Combat Batch A
 
+Progress is tracked in [`docs/PHASE5_CHECKLIST.md`](docs/PHASE5_CHECKLIST.md). The approved BDO
+damage conversion uses configurable square-root compression and keeps per-hit and aggregate
+coefficients explicit; source percentages are never passed directly to the combat pipeline.
+The frozen eight-skill roster and per-skill readiness gates are in
+[`docs/PHASE5_BATCH_A_MANIFEST.md`](docs/PHASE5_BATCH_A_MANIFEST.md).
+Concentrated Magic Arrow source values and provisional delivery tuning are documented in
+[`docs/PHASE5_CONCENTRATED_MAGIC_ARROW_TUNING.md`](docs/PHASE5_CONCENTRATED_MAGIC_ARROW_TUNING.md).
+
+The first playable vertical slice is Fireball into Fireball Explosion. Client setup, cast commands,
+collision checks, and expected structured logs are in
+[`docs/PHASE5_FIREBALL_TEST.md`](docs/PHASE5_FIREBALL_TEST.md).
+
+Focused third-person movement checks are documented in
+[`docs/MOUSE_CONTROL_ACCEPTANCE.md`](docs/MOUSE_CONTROL_ACCEPTANCE.md).
+
+Input priority and server-authoritative Blink/Dodge/cancel windows are defined in
+[`docs/INPUT_AND_SKILL_TRANSITIONS.md`](docs/INPUT_AND_SKILL_TRANSITIONS.md).
+
+- Phase 2.5 Smash foundation must remain green before production skill import. Down Smash and Air
+  Smash are server-authoritative follow-up effects, bypass the normal CC budget/immunity check,
+  require downed/floated target state, and remain separate from Down/Air Attack damage bonuses.
+- Start with Phase 5A contract hardening: each catalog rank requires its own production combat
+  definition. Rank files use `skill_id` for the stable catalog ID and `rank` for the learned rank;
+  missing rank definitions remain safely gated.
+- Audit each source field from `kankrittapon/MCP-BRPG` before conversion. Generic `cost` is not
+  imported as SP without tooltip verification because several Wizard records use it for MP.
+  Alternative CC descriptions still require an explicit BRPG rule.
+- Keep dated BDO source snapshots outside runtime resources. The first Batch A audit is documented
+  in `docs/research/BDO_WIZARD_BATCH_A_AUDIT.md`; conflicts remain unresolved until explicitly tuned.
 - Approve complete source data for the first eight Wizard Main skills; do not invent missing values.
 - Add rank SP costs, prerequisites, MP cost, cooldown, cast/recovery timing, movement policy, range,
   targeting shape, hit ticks, and coefficients.
 - Cover projectile/ray, cone, ground AoE, and self AoE through `RpgCombatService`.
 - Use debug particles only. Gate: all eight skills can be learned, ranked, and cast end to end.
+- Add a one-skill vertical-slice gate before the eight-skill batch: verify learn, rank selection,
+  resource use, targeting, hit result, cooldown, relog persistence, and server rejection logs first.
 
 ### Phase 6: Wizard Combat Batch B
 

@@ -1,42 +1,42 @@
-# 🛠️ สิ่งที่ดำเนินการไปแล้ว (What We Did)
+# What We Did
 
-ระบบทั้งหมดถูกปรับแต่งให้เป็นเกมสไตล์ **Action RPG (คล้าย Black Desert Online)** เพื่อความไหลลื่นและตอบโจทย์การควบคุมที่ทันสมัย โดยแบ่งเป็นหัวข้อหลักๆ ดังนี้ครับ:
+Updated: 2026-07-14
 
-## 1. ระบบมุมกล้องอิสระและนุ่มนวล (Cinematic & Over-the-shoulder Camera)
-* **กล้องอิสระแบบ BDO:** แยกการหมุนของกล้องออกจากการหมุนของตัวละคร ทำให้ผู้เล่นสามารถหมุนดูรอบตัวละครได้อิสระโดยที่ตัวละครไม่หันตาม (จนกว่าจะสั่งเดินหรือโจมตี)
-* **มุมมองพาดบ่า (Over-the-shoulder):** เลื่อนจุดกึ่งกลางกล้องเยื้องไปทางขวาและสูงขึ้นเล็กน้อย เพื่อไม่ให้ตัวละครบังเป้าเล็งตรงกลางจอ
-* **ความสมูท (Camera Smoothing):** เพิ่มระบบ Interpolation ให้กับมุมกล้อง ทำให้การหันเมาส์มีความนุ่มนวลและมีน้ำหนัก (Cinematic) ไม่กระตุกหรือหมุนขวับในเฟรมเดียว
-* **การซูมเข้า-ออก (Scroll Zoom):** สามารถใช้ลูกกลิ้งเมาส์ (Scroll wheel) เพื่อปรับระยะกล้องในมุมมองบุคคลที่ 3 ได้ โดยมีระบบยิง Raycast ดักจับกำแพงด้านหลังกล้อง ทำให้เวลาซูมหรือถอยหลังชนกำแพง กล้องจะไม่ทะลุกำแพง
+## Foundations
 
-## 2. ระบบการควบคุมไฮบริด (Hybrid Control: Action & Mouse Mode)
-* **การควบคุมสองโหมด:** สลับโหมดการเล่นระหว่างแบบ Action (เมาส์ล็อคกลางจอสำหรับหันกล้อง/โจมตี) และโหมด Mouse (กด `Ctrl` ค้างเพื่อปลดล็อคเมาส์ สำหรับคลิก UI หรือสั่งเดินแบบ Point & Click)
-* **ระบบ Click-to-Move อัจฉริยะ:**
-  * อาศัยระบบ State Machine (`NAVIGATING`) ในการให้ตัวละครวิ่งไปยังจุดที่คลิก โดยตัวละครจะหันหน้าและวิ่งเข้าหาเป้าหมายเอง
-  * **ระบบแก้ปัญหาติดเนิน (LOS Raycast Fix):** ยิง Raycast อ้างอิงจาก "ระดับสายตา" เพื่อเช็คว่ามีกำแพงขวางหรือไม่ ป้องกันบัคการคลิกที่สูงแล้วตัวละครนิ่งอยู่กับที่
-  * แทรกแซงปุ่มกดโดยใช้ `MovementInputUpdateEvent` ของ Forge ทำให้การเดินไหลลื่นและไม่โดนรบกวนโดยปุ่มที่ผู้เล่นเผลอกด
-* **Auto-mantle (ก้าวข้ามเนินออโต้):** ปรับ `MaxUpStep` เป็น 1.25 Block เพื่อให้ตัวละครวิ่งปีนเนิน/บันได ได้เองโดยไม่ต้องกดกระโดด ทำให้การเดิน Point & Click ราบรื่นสุดๆ
-* **แอนิเมชันการหมุนตัวนุ่มนวล:** ปรับแต่ง `LivingEntityMixin` ให้ตัวละครค่อยๆ หมุนตัวไปในทิศทางที่กำลังเดินอย่างสมจริง (Lerp Body Yaw)
+- Built server-authoritative World Core combat for Player and Mob: AP/Magic scaling, Accuracy,
+  Critical, Evasion, DR, FG, SA, Iframe, CC budget/immunity, Smash, special attacks, and Status.
+- Added NORMAL, ELITE, BOSS, and UNSTOPPABLE control profiles with datapack compatibility for
+  Vanilla and modded LivingEntity types.
+- Added level 1-100, persistent EXP, independent Skill EXP/SP, class/spec, equipment, stamina,
+  training stats, learned ranks, and persistent cooldowns.
+- Added data-driven skill catalog/runtime, targeting shapes, multi-hit timelines, resources,
+  protection windows, projectile collision, impact AoE, skill links, and structured debug logs.
 
-## 3. ระบบเป้าเล็งและการล็อคเป้าหมาย (Dynamic Crosshair & Targeting)
-* **Dynamic Crosshair (เป้าเล็งตามสถานการณ์):**
-  * ลบ Crosshair เดิมของ Minecraft ทิ้ง เพื่อความสะอาดตา
-  * วาดเป้าเล็งใหม่กลางหน้าจอ หากเล็งไปโดนศัตรู/มอนสเตอร์ เป้าเล็งจะเปลี่ยนเป็นรูปแบบโจมตี (สีแดง) เพื่อให้รู้ว่าเป้าหมายนี้โจมตีได้ โดยจงใจไม่ใส่หลอดเลือดหรือชื่อ เพื่อให้ไปใช้งานร่วมกับ Mod UI อื่นๆ (เช่น Neat, Jade) ได้อย่างสมบูรณ์แบบ
-* **ลอจิกการคลิกเมาส์ในโหมดเมาส์ (Mouse Mode):**
-  * **คลิกซ้าย (Ctrl + LMB):**
-    * **คลิกค้างแล้วลาก:** หมุนมุมกล้อง
-    * **คลิกที่ศัตรู (1 ครั้ง):** ล็อคเป้าหมาย (Select Target พร้อมออร่าเรืองแสง)
-    * **ดับเบิ้ลคลิกที่ศัตรู:** สั่ง Auto-Attack (โจมตีอัตโนมัติ)
-    * **คลิกที่พื้นว่าง (1 ครั้ง):** เคลียร์การล็อคเป้าหมายทิ้ง
-    * **ดับเบิ้ลคลิกที่บล็อก:** สั่ง Auto-Mine (ขุดบล็อกอัตโนมัติ)
-  * **คลิกขวา (Ctrl + RMB):**
-    * **คลิกที่พื้น:** สั่งให้ตัวละครวิ่งไปยังจุดที่คลิก (Point & Click Movement)
-    * **คลิกที่ศัตรู/เป้าหมาย:** สั่งให้ตัวละครวิ่งตามศัตรูตัวนั้น
-* **เอฟเฟกต์เรืองแสงเฉพาะตัว (Target Glow):** เลี่ยงการใช้ Effect ของ Vanilla เปลี่ยนมาใช้วิธี Mixin แทรกแซงเข้าไปใน Rendering ทำให้เป้าหมายที่เราล็อคเป้าเกิดออร่าเรืองแสง (Glow) ออกมาให้เห็นเด่นชัด โดยไม่ต้องแจก Status Effect ให้มอนสเตอร์
+## Controls And Camera
 
-## 4. แผงควบคุมและส่วนเสริมอื่นๆ
-* จัดระเบียบ Event Bus (ย้ายคำสั่งจาก `tick` ไป `MovementInputUpdateEvent`) เพื่อความเป็นสากลของโครงสร้าง Forge
-* จัดการระบบ Mana (ClientMana) ให้เชื่อมต่อกับ UI บนหน้าจออย่างถูกต้อง
-* การยิงลูกพลัง (Magic Bolt) แบบอ้างอิง ID ของเป้าหมาย (ส่งข้าม Network)
+- Third-person shoulder camera remains anchored to the player with smoothing, collision, and zoom.
+- Idle mouse movement orbits the camera without rotating the player.
+- Manual WASD is camera-relative and supports eight directions. While moving, body yaw follows the
+  actual reticle ray; camera yaw remains independent.
+- Hold Ctrl for cursor commands. Ctrl+LMB selects/clears targets; Ctrl+RMB moves to ground/entity.
+- Ctrl+LMB camera drag was removed. Selected targets remain UI/context state, not skill lock-on.
+- Click-to-move and auto-attack rotate the body without forcing camera yaw.
+- Skill facing is data-driven: none, aim on cast, target on cast, or track aim until release.
 
----
-*บันทึก ณ วันที่ 11 ก.ค. 2026 - ระบบ Camera, Movement และ HUD โครงสร้างหลักสมบูรณ์พร้อมต่อยอดระบบ Action Combat ต่อไป*
+## Phase 5 Skill Work
+
+- Converted sourced BDO percentages through a configurable BRPG coefficient formula.
+- Implemented Fireball ranks I-IV and Fireball Explosion ranks I-III.
+- Fireball is a quick aim projectile; Explosion consumes its stored impact anchor for AoE.
+- Implemented Concentrated Magic Arrow ranks I-III from audited values and added per-hit hit/critical
+  chance modifiers to the damage context.
+- Frozen the eight-skill Wizard Main Batch A roster without inventing missing combat data.
+
+## Verification
+
+- Latest `gradlew test build`: passed.
+- Latest `gradlew runGameTestServer`: all 12 required tests passed.
+- Runtime loaded 19 definitions across 12 stable skill IDs.
+
+Current continuation point: `TASK.md`.

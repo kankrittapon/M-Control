@@ -19,9 +19,8 @@ public final class CameraSettingsScreen extends Screen {
         int left = this.width / 2 - 100;
         int top = this.height / 2 - 45;
         addRenderableWidget(new CameraDistanceSlider(left, top, 200, 20));
-        addRenderableWidget(new DragSensitivitySlider(left, top + 28, 200, 20));
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> onClose())
-                .bounds(left, top + 68, 200, 20).build());
+                .bounds(left, top + 36, 200, 20).build());
     }
 
     @Override
@@ -60,23 +59,4 @@ public final class CameraSettingsScreen extends Screen {
         }
     }
 
-    private static final class DragSensitivitySlider extends AbstractSliderButton {
-        private static final double MIN = 0.03D;
-        private static final double MAX = 0.5D;
-
-        private DragSensitivitySlider(int x, int y, int width, int height) {
-            super(x, y, width, height, Component.empty(),
-                    (ClientCameraController.getDragSensitivity() - MIN) / (MAX - MIN));
-            updateMessage();
-        }
-
-        @Override protected void updateMessage() {
-            setMessage(Component.translatable("screen.rpg_project.camera.drag_sensitivity",
-                    Math.round(ClientCameraController.getDragSensitivity() * 100.0D)));
-        }
-
-        @Override protected void applyValue() {
-            ClientCameraController.setDragSensitivity(MIN + value * (MAX - MIN));
-        }
-    }
 }

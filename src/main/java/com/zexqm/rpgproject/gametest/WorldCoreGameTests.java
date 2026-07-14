@@ -4,11 +4,15 @@ import com.zexqm.rpgproject.RpgProject;
 import com.zexqm.rpgproject.rpg.CrowdControlType;
 import com.zexqm.rpgproject.rpg.combat.CrowdControlApplicationResult;
 import com.zexqm.rpgproject.rpg.combat.CrowdControlResolver;
+import com.zexqm.rpgproject.rpg.combat.CombatConfig;
 import com.zexqm.rpgproject.rpg.combat.RpgCombatStateProvider;
 import com.zexqm.rpgproject.rpg.combat.RpgCombatService;
 import com.zexqm.rpgproject.rpg.combat.RpgDamageContext;
 import com.zexqm.rpgproject.rpg.combat.RpgDamageResult;
 import com.zexqm.rpgproject.rpg.combat.RpgPowerType;
+import com.zexqm.rpgproject.rpg.combat.SmashApplicationResult;
+import com.zexqm.rpgproject.rpg.combat.SmashResolver;
+import com.zexqm.rpgproject.rpg.combat.SmashType;
 import com.zexqm.rpgproject.rpg.mob.MobControlProfile;
 import com.zexqm.rpgproject.rpg.mob.MobControlProfiles;
 import com.zexqm.rpgproject.rpg.status.RpgStatusService;
@@ -56,6 +60,36 @@ public final class WorldCoreGameTests {
                 .orElseThrow(() -> new IllegalStateException("Missing combat state"));
         helper.assertTrue(state.ccPoints() == 2.0 && state.ccImmunityTicks() == 100,
                 "CC budget did not start immunity at 2.0 points");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void downSmashIgnoresCcImmunityWithoutAddingBudget(GameTestHelper helper) {
+        Zombie attacker = helper.spawn(EntityType.ZOMBIE, new BlockPos(1, 2, 2));
+        Zombie target = helper.spawn(EntityType.ZOMBIE, new BlockPos(1, 2, 1));
+        CrowdControlResolver.apply(target, CrowdControlType.STUN, attacker.position());
+        CrowdControlResolver.apply(target, CrowdControlType.KNOCKDOWN, attacker.position());
+        var state = target.getCapability(RpgCombatStateProvider.DATA)
+                .orElseThrow(() -> new IllegalStateException("Missing combat state"));
+        int beforeTicks = state.activeCcTicks();
+        double beforePoints = state.ccPoints();
+        SmashApplicationResult result = SmashResolver.apply(target, SmashType.DOWN_SMASH, 1.0,
+                attacker.position());
+        helper.assertTrue(result.status() == SmashApplicationResult.Status.APPLIED
+                        && state.ccImmunityTicks() > 0 && state.ccPoints() == beforePoints
+                        && state.activeCcTicks() == beforeTicks + CombatConfig.values().downSmashExtensionTicks(),
+                "Down Smash used CC budget, respected immunity, or failed to extend down state");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void smashRequiresMatchingControlState(GameTestHelper helper) {
+        Zombie attacker = helper.spawn(EntityType.ZOMBIE, new BlockPos(1, 2, 2));
+        Zombie target = helper.spawn(EntityType.ZOMBIE, new BlockPos(1, 2, 1));
+        SmashApplicationResult result = SmashResolver.apply(target, SmashType.AIR_SMASH, 1.0,
+                attacker.position());
+        helper.assertTrue(result.status() == SmashApplicationResult.Status.WRONG_STATE,
+                "Air Smash applied to a target that was not floating");
         helper.succeed();
     }
 

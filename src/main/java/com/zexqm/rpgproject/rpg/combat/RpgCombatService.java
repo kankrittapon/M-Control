@@ -23,8 +23,10 @@ public final class RpgCombatService {
         CombatConfig.Values config = CombatConfig.values();
         RpgCombatStats attackerStats = RpgCombatStats.resolve(attacker);
         RpgCombatStats targetStats = RpgCombatStats.resolve(target);
-        if (context.accuracyEligible() && target.getRandom().nextDouble() >
-                RpgCombatMath.hitChance(attackerStats.accuracy(), targetStats.evasion(), config)) {
+        double hitChance = net.minecraft.util.Mth.clamp(
+                RpgCombatMath.hitChance(attackerStats.accuracy(), targetStats.evasion(), config)
+                        + context.hitChanceBonus(), config.minimumHitChance(), config.maximumHitChance());
+        if (context.accuracyEligible() && target.getRandom().nextDouble() > hitChance) {
             return RpgDamageResult.stopped(RpgDamageResult.Outcome.MISS);
         }
 
@@ -34,8 +36,10 @@ public final class RpgCombatService {
             case NONE -> 0.0;
         };
         double damage = (context.baseDamage() + power * config.powerScale()) * context.coefficient();
+        double criticalChance = net.minecraft.util.Mth.clamp(
+                attackerStats.criticalChance() + context.criticalChanceBonus(), 0.0, 1.0);
         boolean critical = context.criticalEligible()
-                && attacker.getRandom().nextDouble() < attackerStats.criticalChance();
+                && attacker.getRandom().nextDouble() < criticalChance;
         if (critical) damage *= attackerStats.criticalDamage();
 
         Set<SpecialAttackType> specials = resolveSpecials(context, state);

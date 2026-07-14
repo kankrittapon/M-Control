@@ -6,7 +6,7 @@
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/12.Lightning Chain.png",
   "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "unavailable_reason": "Missing verified SP costs, prerequisites, and combat definition",
   "ranks": [
     {
       "rank": 1,

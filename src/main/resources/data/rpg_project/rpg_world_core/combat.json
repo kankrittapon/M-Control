@@ -28,6 +28,12 @@
       "freezing": 40
     }
   },
+  "smash": {
+    "down_extension_ticks": 20,
+    "air_extension_ticks": 12,
+    "horizontal_velocity": 0.8,
+    "air_vertical_velocity": -0.15
+  },
   "special_damage": {
     "rear_attack_arc_degrees": 120.0,
     "back_attack": 1.2,

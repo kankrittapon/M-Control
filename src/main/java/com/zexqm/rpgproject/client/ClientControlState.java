@@ -1,6 +1,5 @@
 package com.zexqm.rpgproject.client;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -13,7 +12,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.ForgeMod;
-import org.slf4j.Logger;
 
 /**
  * Central client-side state for RPG view modes and mouse-movement control.
@@ -24,11 +22,16 @@ import org.slf4j.Logger;
  * WASD movement direction follows the camera yaw.</p>
  */
 public final class ClientControlState {
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final double MOVE_STOP_DISTANCE = 0.25D;
     private static final double MOVE_TARGET_STOP_DISTANCE = 2.25D;
     private static final double MAX_MOVE_TARGET_DISTANCE = 48.0D;
-    private static final float AUTO_MOVE_TURN_SPEED = 8.0F;
+    private static final float AUTO_MOVE_MAX_TURN_SPEED = 6.0F;
+    private static final float AUTO_MOVE_TURN_ACCELERATION = 0.75F;
+    private static final float AUTO_MOVE_TURN_RESPONSE = 0.18F;
+    private static final float AUTO_MOVE_ACCELERATION = 0.12F;
+    private static final float AUTO_MOVE_DECELERATION = 0.18F;
+    private static final double AUTO_MOVE_SLOW_RADIUS = 2.5D;
+    private static final double MOVE_COMMAND_MERGE_DISTANCE = 0.35D;
     private static final float AUTO_ATTACK_TURN_SPEED = 12.0F;
     private static final double AUTO_ATTACK_CHASE_BUFFER = 0.35D;
     private static final int AUTO_ATTACK_INTERVAL_TICKS = 10;
@@ -39,13 +42,6 @@ public final class ClientControlState {
 
     private static ClientViewMode viewMode = ClientViewMode.THIRD_PERSON;
     private static boolean mouseMovementMode;
-    private static boolean cameraDragMode;
-    private static double lastDragMouseX;
-    private static double lastDragMouseY;
-    private static double dragStartMouseX;
-    private static double dragStartMouseY;
-    private static boolean cameraDragMoved;
-    private static int cameraDragLogCooldown;
     private static Vec3 moveDestination;
     private static int moveTargetId = -1;
     private static int autoAttackTargetId = -1;
@@ -54,6 +50,8 @@ public final class ClientControlState {
     private static Direction autoMineDirection;
     private static int autoAttackTicks;
     private static MovementState movementState = MovementState.IDLE;
+    private static float autoMoveThrottle;
+    private static float autoMoveTurnVelocity;
 
     // ── Getters ──────────────────────────────────────────────────────────
 
@@ -69,10 +67,6 @@ public final class ClientControlState {
         return mouseMovementMode;
     }
 
-    public static boolean isCameraDragMode() {
-        return cameraDragMode;
-    }
-
     public static boolean isAutoAttacking() {
         return autoAttackTargetId >= 0 || autoMinePos != null;
     }
@@ -83,6 +77,10 @@ public final class ClientControlState {
 
     public static MovementState getMovementState() {
         return movementState;
+    }
+
+    public static float autoMoveThrottle() {
+        return autoMoveThrottle;
     }
 
     // ── View Mode Toggle ─────────────────────────────────────────────────
@@ -129,39 +127,18 @@ public final class ClientControlState {
             releaseMouse(minecraft);
         } else if (!next && mouseMovementMode) {
             // ◀ Leaving mouse movement mode — hide cursor
-            cameraDragMode = false;
             grabMouse(minecraft);
         }
 
         mouseMovementMode = next;
     }
 
-    public static void setCameraDragMode(boolean dragging) {
-        boolean wasDragging = cameraDragMode;
-        cameraDragMode = dragging && mouseMovementMode;
-        if (cameraDragMode) {
-            Minecraft minecraft = Minecraft.getInstance();
-            dragStartMouseX = lastDragMouseX = minecraft.mouseHandler.xpos();
-            dragStartMouseY = lastDragMouseY = minecraft.mouseHandler.ypos();
-            cameraDragMoved = false;
-            cameraDragLogCooldown = 0;
-            if (!wasDragging) {
-                LOGGER.info("[RPG Input] camera drag start mouse=({}, {})", lastDragMouseX, lastDragMouseY);
-            }
-        } else if (wasDragging) {
-            LOGGER.info("[RPG Input] camera drag stop moved={}", cameraDragMoved);
-        }
-    }
-
-    public static boolean consumeCameraDragMoved() {
-        boolean moved = cameraDragMoved;
-        cameraDragMoved = false;
-        return moved;
-    }
-
     // ── Click-to-move ────────────────────────────────────────────────────
 
     public static void setMoveDestination(Vec3 destination) {
+        if (movementState == MovementState.NAVIGATING && moveTargetId < 0 && moveDestination != null
+                && moveDestination.distanceToSqr(destination)
+                <= MOVE_COMMAND_MERGE_DISTANCE * MOVE_COMMAND_MERGE_DISTANCE) return;
         moveDestination = destination;
         moveTargetId = -1;
         movementState = MovementState.NAVIGATING;
@@ -200,6 +177,8 @@ public final class ClientControlState {
         if (movementState == MovementState.NAVIGATING) {
             movementState = MovementState.IDLE;
         }
+        autoMoveThrottle = 0.0F;
+        autoMoveTurnVelocity = 0.0F;
     }
 
     // ── Tick ─────────────────────────────────────────────────────────────
@@ -229,7 +208,6 @@ public final class ClientControlState {
             movementState = MovementState.IDLE;
         }
 
-        tickCameraDrag(minecraft);
         tickAutoAttack(minecraft);
 
         // ── Auto-move (click-to-move) ─────────────────────────────────
@@ -251,20 +229,31 @@ public final class ClientControlState {
             return;
         }
 
-        // Calculate yaw toward destination (Minecraft convention: 0=South, +90=West)
+        double remaining = Math.sqrt(flat.lengthSqr()) - stopDistance;
+        float desiredThrottle = (float) Mth.clamp(remaining / AUTO_MOVE_SLOW_RADIUS, 0.2D, 1.0D);
+        float throttleStep = desiredThrottle > autoMoveThrottle
+                ? AUTO_MOVE_ACCELERATION : AUTO_MOVE_DECELERATION;
+        autoMoveThrottle = Mth.approach(autoMoveThrottle, desiredThrottle, throttleStep);
+
+        // Minecraft yaw convention: 0=South, +90=West. Angular acceleration avoids snapping
+        // when several move commands rapidly replace one another.
         float targetYaw = (float) Math.toDegrees(Math.atan2(-flat.x, flat.z));
         float currentYaw = minecraft.player.getYRot();
-        float smoothedYaw = Mth.approachDegrees(currentYaw, targetYaw, AUTO_MOVE_TURN_SPEED);
+        float yawError = Mth.wrapDegrees(targetYaw - currentYaw);
+        float desiredTurnVelocity = Mth.clamp(yawError * AUTO_MOVE_TURN_RESPONSE,
+                -AUTO_MOVE_MAX_TURN_SPEED, AUTO_MOVE_MAX_TURN_SPEED);
+        autoMoveTurnVelocity = Mth.approach(autoMoveTurnVelocity, desiredTurnVelocity,
+                AUTO_MOVE_TURN_ACCELERATION);
+        float smoothedYaw = currentYaw + autoMoveTurnVelocity;
         minecraft.player.setYRot(smoothedYaw);
         minecraft.player.setYHeadRot(smoothedYaw);
-        minecraft.player.setSprinting(true);
+        minecraft.player.setSprinting(autoMoveThrottle >= 0.85F);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private static void exitMouseMovementMode(Minecraft minecraft) {
         mouseMovementMode = false;
-        cameraDragMode = false;
         cancelAutoMove();
     }
 
@@ -297,38 +286,6 @@ public final class ClientControlState {
                 || minecraft.player.isInLava();
     }
 
-    private static void tickCameraDrag(Minecraft minecraft) {
-        if (!cameraDragMode) {
-            return;
-        }
-
-        if (!mouseMovementMode) {
-            LOGGER.info("[RPG Input] camera drag canceled because mouse movement mode ended");
-            cameraDragMode = false;
-            return;
-        }
-
-        double mouseX = minecraft.mouseHandler.xpos();
-        double mouseY = minecraft.mouseHandler.ypos();
-        double deltaX = mouseX - lastDragMouseX;
-        double deltaY = mouseY - lastDragMouseY;
-        lastDragMouseX = mouseX;
-        lastDragMouseY = mouseY;
-
-        if (deltaX != 0.0D || deltaY != 0.0D) {
-            double totalX = mouseX - dragStartMouseX;
-            double totalY = mouseY - dragStartMouseY;
-            if (totalX * totalX + totalY * totalY >= 16.0D) {
-                cameraDragMoved = true;
-            }
-            ClientCameraController.onCursorDrag(deltaX, deltaY);
-            if (cameraDragLogCooldown-- <= 0) {
-                LOGGER.info("[RPG Input] camera drag delta=({}, {}) total=({}, {})", deltaX, deltaY, totalX, totalY);
-                cameraDragLogCooldown = 12;
-            }
-        }
-    }
-
     private static void tickAutoAttack(Minecraft minecraft) {
         if (minecraft.gameMode == null) {
             stopAutoAttack();
@@ -359,7 +316,6 @@ public final class ClientControlState {
 
         double distance = distanceToHitbox(minecraft.player.getEyePosition(), living.getBoundingBox());
         double attackReach = minecraft.player.getAttributeValue(ForgeMod.ENTITY_REACH.get());
-        faceEntitySmoothly(minecraft, living);
 
         if (autoAttackInRange && distance > attackReach + AUTO_ATTACK_CHASE_BUFFER) {
             autoAttackInRange = false;
@@ -372,6 +328,7 @@ public final class ClientControlState {
             return;
         }
 
+        faceEntitySmoothly(minecraft, living);
         autoAttackTicks--;
         if (autoAttackTicks > 0) {
             return;

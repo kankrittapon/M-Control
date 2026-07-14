@@ -6,6 +6,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.LinkedHashSet;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 
 public final class SkillHitResolver {
@@ -31,9 +33,10 @@ public final class SkillHitResolver {
             }
             case SELF_AOE -> collectCircle(level, context.caster(), context.caster().position(), radius, result);
             case GROUND_AOE, CIRCLE -> {
-                Vec3 center = context.groundPosition() == null ? end : context.groundPosition();
+                Vec3 center = offsetCenter(context.groundPosition() == null ? end : context.groundPosition(),
+                        context.direction(), hit);
                 if (center.distanceToSqr(context.origin()) <= range * range)
-                    collectCircle(level, context.caster(), center, radius, result);
+                    collectCircle(level, context.caster(), center, radius, hit.maxTargets(), result);
             }
             case LINE -> {
                 for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class,
@@ -56,14 +59,76 @@ public final class SkillHitResolver {
                 context.caster().hurtMarked = true;
             }
         }
-        return result;
+        return limit(result, context.caster(), impactCenter(definition, hit, context), hit.maxTargets());
+    }
+
+    public static Set<LivingEntity> resolveImpact(SkillDefinition definition, SkillDefinition.Hit hit,
+                                                   SkillExecutionContext context, Vec3 impact,
+                                                   LivingEntity primaryTarget) {
+        if (!(context.caster().level() instanceof ServerLevel level)) return Set.of();
+        SkillImpactShape shape = hit.impactShape() == SkillImpactShape.AUTO
+                ? SkillImpactShape.SINGLE : hit.impactShape();
+        if (shape == SkillImpactShape.SINGLE) {
+            return primaryTarget != null && validTarget(context.caster(), primaryTarget)
+                    ? Set.of(primaryTarget) : Set.of();
+        }
+        Set<LivingEntity> targets = new LinkedHashSet<>();
+        double radius = hit.radius() > 0 ? hit.radius() : definition.radius();
+        collectCircle(level, context.caster(), impact, radius, hit.maxTargets(), targets);
+        return targets;
     }
 
     private static void collectCircle(ServerLevel level, LivingEntity caster, Vec3 center, double radius,
                                       Set<LivingEntity> result) {
-        result.addAll(level.getEntitiesOfClass(LivingEntity.class,
+        collectCircle(level, caster, center, radius, 0, result);
+    }
+
+    private static void collectCircle(ServerLevel level, LivingEntity caster, Vec3 center, double radius,
+                                      int maxTargets, Set<LivingEntity> result) {
+        List<LivingEntity> candidates = level.getEntitiesOfClass(LivingEntity.class,
                 new AABB(center, center).inflate(radius),
-                target -> target != caster && target.isAlive() && target.distanceToSqr(center) <= radius * radius));
+                target -> validTarget(caster, target) && distanceToBoundsSqr(center, target.getBoundingBox())
+                        <= radius * radius);
+        candidates.sort(Comparator.comparingDouble(target -> distanceToBoundsSqr(center, target.getBoundingBox())));
+        int limit = maxTargets <= 0 ? candidates.size() : Math.min(maxTargets, candidates.size());
+        result.addAll(candidates.subList(0, limit));
+    }
+
+    private static boolean validTarget(LivingEntity caster, LivingEntity target) {
+        return target != caster && target.isAlive() && !caster.isAlliedTo(target);
+    }
+
+    private static Vec3 offsetCenter(Vec3 center, Vec3 direction, SkillDefinition.Hit hit) {
+        Vec3 forward = new Vec3(direction.x, 0, direction.z);
+        if (forward.lengthSqr() < 1.0E-6) forward = new Vec3(0, 0, 1); else forward = forward.normalize();
+        Vec3 right = new Vec3(-forward.z, 0, forward.x);
+        return center.add(forward.scale(hit.forwardOffset())).add(right.scale(hit.rightOffset()));
+    }
+
+    private static Vec3 impactCenter(SkillDefinition definition, SkillDefinition.Hit hit,
+                                     SkillExecutionContext context) {
+        return switch (definition.targeting()) {
+            case SELF_AOE -> context.caster().position();
+            case GROUND_AOE, CIRCLE -> offsetCenter(context.groundPosition() == null
+                    ? context.origin().add(context.direction().scale(definition.range()))
+                    : context.groundPosition(), context.direction(), hit);
+            default -> context.origin();
+        };
+    }
+
+    private static Set<LivingEntity> limit(Set<LivingEntity> targets, LivingEntity caster,
+                                           Vec3 center, int maxTargets) {
+        return targets.stream().filter(target -> validTarget(caster, target))
+                .sorted(Comparator.comparingDouble(target -> distanceToBoundsSqr(center, target.getBoundingBox())))
+                .limit(maxTargets <= 0 ? Long.MAX_VALUE : maxTargets)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    static double distanceToBoundsSqr(Vec3 point, AABB bounds) {
+        double x = Math.max(bounds.minX, Math.min(point.x, bounds.maxX));
+        double y = Math.max(bounds.minY, Math.min(point.y, bounds.maxY));
+        double z = Math.max(bounds.minZ, Math.min(point.z, bounds.maxZ));
+        return point.distanceToSqr(x, y, z);
     }
 
     static boolean intersectsLine(AABB targetBounds, Vec3 start, Vec3 end, double radius) {
@@ -77,7 +142,7 @@ public final class SkillHitResolver {
         double nearestDistance = Double.MAX_VALUE;
         AABB search = new AABB(context.origin(), end).inflate(radius);
         for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, search,
-                entity -> entity != context.caster() && entity.isAlive())) {
+                entity -> validTarget(context.caster(), entity))) {
             AABB hitbox = target.getBoundingBox().inflate(radius);
             var intersection = hitbox.clip(context.origin(), end);
             if (intersection.isEmpty() && !hitbox.contains(context.origin())) continue;
@@ -92,7 +157,7 @@ public final class SkillHitResolver {
     }
 
     private record ServerPlayerView(SkillExecutionContext context) {
-        boolean valid(LivingEntity entity) { return entity != context.caster() && entity.isAlive(); }
+        boolean valid(LivingEntity entity) { return validTarget(context.caster(), entity); }
     }
 
     private SkillHitResolver() {}

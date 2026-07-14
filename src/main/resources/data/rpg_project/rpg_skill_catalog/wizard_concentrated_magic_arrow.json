@@ -6,11 +6,11 @@
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/3.Concentrated Magic Arrow.png",
   "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "unavailable_reason": "Missing verified SP costs and production acceptance",
   "ranks": [
     {
       "rank": 1,
-      "required_level": 12
+      "required_level": 10
     },
     {
       "rank": 2,
@@ -21,6 +21,11 @@
       "required_level": 38
     }
   ],
-  "prerequisites": [],
+  "prerequisites": [
+    {
+      "skill": "rpg_project:wizard_magic_arrow",
+      "rank": 1
+    }
+  ],
   "mutually_exclusive": []
 }

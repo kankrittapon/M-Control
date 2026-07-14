@@ -5,6 +5,9 @@ import com.zexqm.rpgproject.RpgProject;
 import com.zexqm.rpgproject.mana.ClientMana;
 import com.zexqm.rpgproject.network.RpgNetwork;
 import com.zexqm.rpgproject.network.ToggleCombatPacket;
+import com.zexqm.rpgproject.network.CancelSkillActionPacket;
+import com.zexqm.rpgproject.rpg.skill.SkillCancelTrigger;
+import com.zexqm.rpgproject.rpg.skill.SkillActionState;
 import com.zexqm.rpgproject.rpg.skill.MovementPolicy;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
@@ -41,6 +44,7 @@ public final class ClientEvents {
     private static long lastLeftClickTime;
     private static int lastLeftClickEntityId = -1;
     private static BlockPos lastLeftClickBlockPos;
+    private static boolean movementCancelSent;
 
     public static final KeyMapping TOGGLE_VIEW_MODE = new KeyMapping(
             "key.rpg_project.toggle_view_mode",
@@ -92,6 +96,7 @@ public final class ClientEvents {
         ClientControlState.tick(minecraft);
         ClientTargeting.tick(minecraft);
         ClientCombatState.tick();
+        if (ClientSkillState.action() != SkillActionState.CASTING) movementCancelSent = false;
 
         if (ClientCombatState.actionLocked()) {
             ClientControlState.cancelAutoMove();
@@ -127,10 +132,7 @@ public final class ClientEvents {
         }
 
         if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT && event.getAction() == GLFW.GLFW_RELEASE) {
-            ClientControlState.setCameraDragMode(false);
-            if (!ClientControlState.consumeCameraDragMoved()) {
-                handleLeftClick(minecraft);
-            }
+            handleLeftClick(minecraft);
             event.setCanceled(true);
             return;
         }
@@ -140,9 +142,12 @@ public final class ClientEvents {
         }
 
         if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-            ClientControlState.setCameraDragMode(true);
             event.setCanceled(true);
         } else if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            if (!requestMovementCancelIfNeeded()) {
+                event.setCanceled(true);
+                return;
+            }
             handleRightClick(minecraft);
             event.setCanceled(true);
         }
@@ -175,8 +180,14 @@ public final class ClientEvents {
     @SubscribeEvent
     public static void onMovementInput(MovementInputUpdateEvent event) {
         MovementPolicy skillMovement = ClientSkillState.movement();
-        if (ClientCombatState.actionLocked() || skillMovement == MovementPolicy.LOCKED
-                || skillMovement == MovementPolicy.ROTATE_ONLY) {
+        boolean movementRequested = event.getInput().forwardImpulse != 0.0F
+                || event.getInput().leftImpulse != 0.0F || event.getInput().jumping
+                || ClientControlState.isAutoMoving();
+        boolean cancelingCast = movementRequested && ClientSkillState.movementCancelAllowed();
+        if (cancelingCast) requestMovementCancelIfNeeded();
+        if (ClientCombatState.actionLocked()
+                || (skillMovement == MovementPolicy.LOCKED && !cancelingCast)
+                || (skillMovement == MovementPolicy.ROTATE_ONLY && !cancelingCast)) {
             ClientControlState.cancelAutoMove();
             event.getInput().up = false;
             event.getInput().down = false;
@@ -193,11 +204,12 @@ public final class ClientEvents {
             event.getInput().leftImpulse *= 0.5F;
         }
         if (ClientControlState.isAutoMoving()) {
-            event.getInput().up = true;
+            float throttle = ClientControlState.autoMoveThrottle();
+            event.getInput().up = throttle > 0.0F;
             event.getInput().down = false;
             event.getInput().left = false;
             event.getInput().right = false;
-            event.getInput().forwardImpulse = 1.0F;
+            event.getInput().forwardImpulse = throttle;
             event.getInput().leftImpulse = 0.0F;
             return;
         }
@@ -205,21 +217,19 @@ public final class ClientEvents {
         Minecraft minecraft = Minecraft.getInstance();
         Player player = minecraft.player;
         if (player == null || !ClientControlState.isThirdPerson()
-                || player.isInWaterOrBubble() || player.isInLava()) {
-            return;
-        }
+                || player.isInWaterOrBubble() || player.isInLava()) return;
 
-        // LivingEntityMixin already turns the player toward the camera-relative
-        // WASD direction. Feed that direction to vanilla as forward movement only;
-        // retaining the original strafe impulse would rotate it a second time.
-        if (event.getInput().forwardImpulse != 0.0F || event.getInput().leftImpulse != 0.0F) {
-            event.getInput().up = true;
-            event.getInput().down = false;
-            event.getInput().left = false;
-            event.getInput().right = false;
-            event.getInput().forwardImpulse = 1.0F;
-            event.getInput().leftImpulse = 0.0F;
-        }
+        float strafe = event.getInput().leftImpulse;
+        float forward = event.getInput().forwardImpulse;
+        if (strafe == 0.0F && forward == 0.0F) return;
+
+        // Convert camera-relative input into player-local vanilla impulses. This
+        // preserves diagonal movement without rotating the body or the camera.
+        float delta = (ClientCameraController.getRawYaw() - player.getYRot()) * ((float) Math.PI / 180.0F);
+        float cos = (float) Math.cos(delta);
+        float sin = (float) Math.sin(delta);
+        event.getInput().leftImpulse = strafe * cos - forward * sin;
+        event.getInput().forwardImpulse = forward * cos + strafe * sin;
     }
 
     @SubscribeEvent
@@ -233,6 +243,10 @@ public final class ClientEvents {
 
     @SubscribeEvent
     public static void renderHud(RenderGuiOverlayEvent.Post event) {
+        if (event.getOverlay() != VanillaGuiOverlay.HOTBAR.type()) {
+            return;
+        }
+
         Minecraft minecraft = Minecraft.getInstance();
         Player player = minecraft.player;
         if (player == null || minecraft.options.hideGui) {
@@ -242,6 +256,21 @@ public final class ClientEvents {
         GuiGraphics graphics = event.getGuiGraphics();
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
+
+        if (ClientSkillState.action() == com.zexqm.rpgproject.rpg.skill.SkillActionState.CASTING) {
+            var icon = ClientSkillIcons.icon(ClientSkillState.activeSkill());
+            if (icon != null) {
+                int size = 32;
+                int x = (width - size) / 2;
+                int y = height - 98;
+                graphics.fill(x - 2, y - 2, x + size + 2, y + size + 5, 0xCC0D1116);
+                graphics.blit(icon, x, y, 0, 0, size, size, size, size);
+                int total = Math.max(1, ClientSkillState.castTicks());
+                int elapsed = Math.max(0, total - ClientSkillState.actionTicks());
+                int progress = Math.min(size, Math.round(size * elapsed / (float) total));
+                graphics.fill(x, y + size + 1, x + progress, y + size + 3, 0xFFFFA632);
+            }
+        }
 
         // Dynamic Crosshair / Target Info
         if (ClientControlState.isThirdPerson()) {
@@ -378,6 +407,16 @@ public final class ClientEvents {
             ClientControlState.setMoveDestination(dest);
             minecraft.player.displayClientMessage(Component.translatable("message.rpg_project.move.destination"), true);
         }
+    }
+
+    private static boolean requestMovementCancelIfNeeded() {
+        if (ClientSkillState.action() != SkillActionState.CASTING) return true;
+        if (!ClientSkillState.movementCancelAllowed()) return false;
+        if (!movementCancelSent) {
+            movementCancelSent = true;
+            RpgNetwork.CHANNEL.sendToServer(new CancelSkillActionPacket(SkillCancelTrigger.MOVEMENT));
+        }
+        return true;
     }
 
     private static boolean shouldZoomCamera(Minecraft minecraft) {

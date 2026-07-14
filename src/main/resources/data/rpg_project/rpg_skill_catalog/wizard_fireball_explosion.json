@@ -4,23 +4,31 @@
   "description": "Fireball Explosion is a combat skill for the Witch and Wizard. It explodes the fireball to harm the enemies.",
   "class": "wizard",
   "tree": "main",
-  "icon": "textures/gui/skills/wizard/main/7.Fireball Explosion.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "icon": "textures/gui/skills/wizard/main/fireball_explosion.png",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,
-      "required_level": 18
+      "required_level": 18,
+      "sp_cost": 65
     },
     {
       "rank": 2,
-      "required_level": 34
+      "required_level": 34,
+      "sp_cost": 75
     },
     {
       "rank": 3,
-      "required_level": 46
+      "required_level": 46,
+      "sp_cost": 85
     }
   ],
-  "prerequisites": [],
+  "prerequisites": [
+    {
+      "skill": "rpg_project:wizard_fireball",
+      "minimum_rank": 1
+    }
+  ],
   "mutually_exclusive": []
 }

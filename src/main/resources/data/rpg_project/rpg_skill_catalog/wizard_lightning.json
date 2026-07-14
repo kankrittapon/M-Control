@@ -1,32 +1,32 @@
 {
   "mcp_id": "wizard_lightning",
   "name": "Lightning",
-  "description": "",
+  "description": "Lightning is a combat skill for the Witch and Wizard. Drops powerful lightning from the sky to attack enemies.",
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/14.Lightning.png",
   "playable": false,
-  "unavailable_reason": "MCP get_skill returned wizard_lightning_chain for wizard_lightning; detail, SP costs, prerequisites, and combat definition are unresolved",
+  "unavailable_reason": "Missing verified SP costs, prerequisites, and combat definition",
   "ranks": [
     {
       "rank": 1,
-      "required_level": 1
+      "required_level": 14
     },
     {
       "rank": 2,
-      "required_level": 1
+      "required_level": 21
     },
     {
       "rank": 3,
-      "required_level": 1
+      "required_level": 29
     },
     {
       "rank": 4,
-      "required_level": 1
+      "required_level": 37
     },
     {
       "rank": 5,
-      "required_level": 1
+      "required_level": 46
     }
   ],
   "prerequisites": [],

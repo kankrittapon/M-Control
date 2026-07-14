@@ -6,7 +6,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class RpgNetwork {
-    private static final String PROTOCOL_VERSION = "1";
+    private static final String PROTOCOL_VERSION = "3";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(RpgProject.MOD_ID, "main"),
@@ -46,6 +46,10 @@ public final class RpgNetwork {
         CHANNEL.messageBuilder(SyncSkillProgressPacket.class, id)
                 .encoder(SyncSkillProgressPacket::encode).decoder(SyncSkillProgressPacket::decode)
                 .consumerMainThread(SyncSkillProgressPacket::handle).add();
+        id++;
+        CHANNEL.messageBuilder(CancelSkillActionPacket.class, id)
+                .encoder(CancelSkillActionPacket::encode).decoder(CancelSkillActionPacket::decode)
+                .consumerMainThread(CancelSkillActionPacket::handle).add();
     }
 
     private RpgNetwork() {

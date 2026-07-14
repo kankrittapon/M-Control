@@ -1,0 +1,19 @@
+{
+  "skill_id": "rpg_project:wizard_concentrated_magic_arrow",
+  "class": "wizard",
+  "rank": 2,
+  "targeting": "aim_projectile",
+  "weapons": {"weapon_set": "main", "main": true, "sub": true},
+  "resource_type": "mp",
+  "resource_cost": 30,
+  "cooldown_ticks": 100,
+  "cast_ticks": 6,
+  "recovery_ticks": 4,
+  "movement_policy": "walk",
+  "facing_policy": "track_aim_until_release",
+  "turn_speed": 60.0,
+  "transitions": {},
+  "range": 24.0,
+  "projectile_speed": 1.5,
+  "hits": [{"timing_tick": 5, "impact_shape": "circle", "radius": 1.25, "max_targets": 4, "coefficient": 1.7516, "power_type": "magic", "critical_chance_bonus": 0.30, "crowd_control": "knockdown", "special_attacks": ["down_attack"]}]
+}

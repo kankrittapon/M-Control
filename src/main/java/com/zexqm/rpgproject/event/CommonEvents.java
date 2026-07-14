@@ -224,7 +224,7 @@ public final class CommonEvents {
                                     Vec3 ground = aimed instanceof net.minecraft.world.phys.BlockHitResult blockHit
                                             ? blockHit.getLocation() : origin.add(direction.scale(8.0));
                                     if (skill != null && switch (skill.targeting()) {
-                                        case RAY, AIM_PROJECTILE, LINE, ENTITY_TARGETED -> true;
+                                        case RAY, AIM_PROJECTILE, LINE, ENTITY_TARGETED, GROUND_AOE, CIRCLE -> true;
                                         default -> false;
                                     }) {
                                         LivingEntity nearest = player.serverLevel().getEntitiesOfClass(LivingEntity.class,
@@ -238,7 +238,7 @@ public final class CommonEvents {
                                             ground = nearest.position();
                                             ctx.getSource().sendSuccess(() -> Component.literal(
                                                     "Debug auto-aim: " + nearest.getType().toShortString()
-                                                            + " #" + nearest.getId()), false);
+                                                            + " #" + nearest.getId() + " ground=" + nearest.position()), false);
                                         }
                                     }
                                     var result = SkillRuntime.cast(player, id, new SkillExecutionContext(player,
@@ -320,7 +320,7 @@ public final class CommonEvents {
     @SubscribeEvent
     public static void livingDeath(LivingDeathEvent event) {
         event.getEntity().getCapability(RpgCombatStateProvider.DATA).ifPresent(RpgCombatState::clear);
-        if (event.getEntity() instanceof ServerPlayer deadPlayer) SkillRuntime.cancel(deadPlayer);
+        if (event.getEntity() instanceof ServerPlayer deadPlayer) SkillRuntime.clearTransient(deadPlayer);
         if (!(event.getSource().getEntity() instanceof ServerPlayer player) || event.getEntity() == player) return;
         long reward = Math.max(10L, Math.round(event.getEntity().getMaxHealth() * 5.0));
         player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
@@ -419,7 +419,10 @@ public final class CommonEvents {
                 syncRpg(player, data);
                 RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                         new SyncSkillStatePacket(data.actionState(), movement,
-                                PrimaryResourceType.forClass(data.rpgClass())));
+                                PrimaryResourceType.forClass(data.rpgClass()),
+                                SkillRuntime.activeSkillId(player), data.actionTicks(),
+                                SkillRuntime.activeCastTicks(player),
+                                SkillRuntime.movementCancelAllowed(player)));
             }
         });
     }
@@ -473,7 +476,7 @@ public final class CommonEvents {
     @SubscribeEvent
     public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            SkillRuntime.cancel(player);
+            SkillRuntime.clearTransient(player);
             com.zexqm.rpgproject.network.SkillProgressActionPacket.clearReplayState(player);
         }
     }
@@ -481,7 +484,7 @@ public final class CommonEvents {
     @SubscribeEvent
     public static void changedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
-            SkillRuntime.cancel(player);
+            SkillRuntime.clearTransient(player);
             player.getCapability(RpgCombatStateProvider.DATA).ifPresent(RpgCombatState::clear);
             data.sheathe(); syncRpg(player, data);
             CommonPacketSync.syncSkillProgress(player, data);

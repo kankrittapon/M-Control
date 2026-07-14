@@ -1,0 +1,127 @@
+{
+  "snapshot_date": "2026-07-14",
+  "scope": "wizard_main_batch_a",
+  "policy": {
+    "runtime_imported": false,
+    "official_priority": true,
+    "notes": "Raw BDO reference values. These are not BRPG balance values. Null means not verified."
+  },
+  "sources": {
+    "mcp_brpg": "https://github.com/kankrittapon/MCP-BRPG/blob/main/data/BRPG/Wizard_Main_skills.json",
+    "official_pvp_guide": "https://www.jp.playblackdesert.com/ja-jp/Wiki?wikiNo=58",
+    "official_balance_2025_08_28": "https://blackdesert.pearlabyss.com/Asia/en-US/News/Notice/Detail?_boardNo=8034",
+    "bdo_codex_class": "https://bdocodex.com/us/skills/wizard/"
+  },
+  "skills": [
+    {
+      "id": "wizard_staff_attack",
+      "verified_variant": "Staff Attack X",
+      "required_level": 43,
+      "mp_cost": 0,
+      "cooldown_seconds": null,
+      "damage": null,
+      "confidence": "low",
+      "issues": ["MCP ranks contain cost values despite the description stating no resource cost", "Current numeric tooltip not yet verified"]
+    },
+    {
+      "id": "wizard_dagger_stab",
+      "verified_variant": "Dagger Stab V",
+      "required_level": 49,
+      "mp_cost": 0,
+      "cooldown_seconds": null,
+      "damage": null,
+      "critical_rate_percent": 100,
+      "confidence": "medium",
+      "sources": ["https://bdocodex.com/us/skill/3144/"],
+      "issues": ["Base rank V numbers still need direct verification; Absolute version is 1525% x2 and is not interchangeable"]
+    },
+    {
+      "id": "wizard_magic_arrow",
+      "verified_variant": "Magic Arrow V",
+      "required_level": 43,
+      "mp_cost": null,
+      "cooldown_seconds": null,
+      "damage": null,
+      "max_targets": 5,
+      "confidence": "medium",
+      "issues": ["Current damage and hit count not yet verified from a direct tooltip page", "MCP generic cost 17 is not classified as MP or SP"]
+    },
+    {
+      "id": "wizard_concentrated_magic_arrow",
+      "verified_variant": "Concentrated Magic Arrow III",
+      "required_level": 38,
+      "mp_cost": 20,
+      "cooldown_seconds": 4,
+      "damage": [{"percent": 899, "hits": 2}],
+      "critical_rate_percent": 40,
+      "max_targets": 5,
+      "pve_cc": ["KNOCKDOWN"],
+      "pvp_cc": ["STIFFNESS"],
+      "special_damage": ["DOWN_ATTACK"],
+      "confidence": "high_community_database",
+      "sources": ["https://bdocodex.com/us/skill/889/"],
+      "issues": ["PvE and PvP CC differ; BRPG policy must choose or model mode-specific payloads"]
+    },
+    {
+      "id": "wizard_multiple_magic_arrows",
+      "verified_variant": "Multiple Magic Arrows",
+      "required_level": 49,
+      "mp_cost": 100,
+      "cooldown_seconds": 11,
+      "damage": [{"percent": 1581, "hits": 2}],
+      "critical_rate_percent": 100,
+      "max_targets": 10,
+      "confidence": "high_community_database",
+      "sources": ["https://bdocodex.com/gl/skill/855/"],
+      "issues": ["MCP-BRPG has an empty ranks array", "Tooltip permits use during cooldown with reduced damage; runtime policy is unresolved"]
+    },
+    {
+      "id": "wizard_mana_absorption",
+      "verified_variant": "Mana Absorption III",
+      "required_level": 45,
+      "mp_cost": 0,
+      "cooldown_seconds": 7,
+      "damage": [{"percent": 1357, "hits": 1, "maximum_repeats": 2}],
+      "max_targets": 10,
+      "self_mp_recovery_percent": 30,
+      "target_movement_slow_percent": 20,
+      "target_movement_slow_seconds": 5,
+      "protection": ["FRONT_GUARD"],
+      "confidence": "high_community_database",
+      "sources": ["https://bdocodex.com/us/skill/867/"],
+      "issues": ["MCP-BRPG says cooldown 13s and mp_cost -40%; current database says cooldown 7s and recovers 30% MP"]
+    },
+    {
+      "id": "wizard_fireball",
+      "verified_variant": "Fireball IV",
+      "required_level": 30,
+      "mp_cost": 30,
+      "cooldown_seconds": 3,
+      "damage": [{"percent": 1150, "hits": 2}],
+      "max_targets": 7,
+      "burn": {"damage": 15, "interval_seconds": 3, "duration_seconds": 9},
+      "pve_cc": ["KNOCKDOWN"],
+      "pvp_cc": ["STIFFNESS"],
+      "special_damage": ["DOWN_ATTACK"],
+      "confidence": "high_community_database",
+      "sources": ["https://bdocodex.com/us/skill/821/"],
+      "issues": ["Instant-cast damage reduction is not quantified", "Fireball buff/link behavior needs a runtime contract"]
+    },
+    {
+      "id": "wizard_fireball_explosion",
+      "verified_variant": "Fireball Explosion III",
+      "required_level": 46,
+      "mp_cost": 85,
+      "cooldown_seconds": 13,
+      "damage": [{"percent": 2500, "hits": 2}],
+      "critical_rate_percent": 80,
+      "max_targets": 10,
+      "burn": {"damage": 20, "interval_seconds": 3, "duration_seconds": 9},
+      "cc": ["KNOCKDOWN"],
+      "special_damage": ["DOWN_ATTACK"],
+      "confidence": "high_community_database",
+      "sources": ["https://bdocodex.com/seaen/skill/849/"],
+      "issues": ["Region page is SEA English", "Requires Fireball buff/link policy"]
+    }
+  ]
+}

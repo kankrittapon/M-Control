@@ -23,6 +23,7 @@ public final class RpgCombatState {
     private CrowdControlType activeCc;
     private int activeCcTicks;
     private boolean casting;
+    private int airSmashLandingTicks;
     private final Map<RpgStatusType, RpgStatusInstance> statuses = new EnumMap<>(RpgStatusType.class);
 
     public boolean frontGuard() { return frontGuardTicks > 0 && guard > 0; }
@@ -73,13 +74,23 @@ public final class RpgCombatState {
     }
 
     public void applyImpulse(LivingEntity target, Vec3 origin) {
+        applyImpulse(target, origin, CombatConfig.values().knockbackVelocity(),
+                Math.max(0.1, target.getDeltaMovement().y));
+    }
+
+    public void applyImpulse(LivingEntity target, Vec3 origin, double horizontalVelocity, double verticalVelocity) {
         if (origin == null) return;
         Vec3 direction = target.position().subtract(origin).multiply(1, 0, 1);
         if (direction.lengthSqr() > 1.0E-6) {
-            Vec3 impulse = direction.normalize().scale(CombatConfig.values().knockbackVelocity());
-            target.setDeltaMovement(impulse.x, Math.max(0.1, target.getDeltaMovement().y), impulse.z);
+            Vec3 impulse = direction.normalize().scale(horizontalVelocity);
+            target.setDeltaMovement(impulse.x, verticalVelocity, impulse.z);
             target.hurtMarked = true;
         }
+    }
+
+    public void applySmash(SmashType type, int extensionTicks) {
+        if (type == SmashType.DOWN_SMASH && downed()) activeCcTicks += Math.max(0, extensionTicks);
+        if (type == SmashType.AIR_SMASH && floated()) airSmashLandingTicks = Math.max(0, extensionTicks);
     }
 
     public boolean tick(LivingEntity entity) {
@@ -97,6 +108,12 @@ public final class RpgCombatState {
             transition = true;
         }
         if (activeCcTicks > 0) activeCcTicks--;
+        if (activeCc == CrowdControlType.FLOAT && airSmashLandingTicks > 0 && entity.onGround()) {
+            activeCc = CrowdControlType.KNOCKDOWN;
+            activeCcTicks = airSmashLandingTicks;
+            airSmashLandingTicks = 0;
+            transition = true;
+        }
         if (activeCc != null && activeCcTicks == 0 && (activeCc != CrowdControlType.FLOAT || entity.onGround())) {
             activeCc = null;
             transition = true;
@@ -121,6 +138,7 @@ public final class RpgCombatState {
         ccPoints = 0.0;
         activeCc = null;
         casting = false;
+        airSmashLandingTicks = 0;
         statuses.clear();
     }
 

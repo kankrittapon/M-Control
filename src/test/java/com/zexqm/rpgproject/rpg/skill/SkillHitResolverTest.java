@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SkillHitResolverTest {
     private static final AABB ZOMBIE_BOUNDS = new AABB(-0.3, 0.0, 4.7, 0.3, 1.95, 5.3);
@@ -26,5 +27,13 @@ class SkillHitResolverTest {
                 new Vec3(2.0, 1.62, 0.0),
                 new Vec3(2.0, 1.62, 10.0),
                 1.0));
+    }
+
+    @Test
+    void areaDistanceUsesClosestBoundingBoxPoint() {
+        assertEquals(0.0, SkillHitResolver.distanceToBoundsSqr(
+                new Vec3(0.0, 1.5, 5.0), ZOMBIE_BOUNDS));
+        assertEquals(1.0, SkillHitResolver.distanceToBoundsSqr(
+                new Vec3(1.3, 1.5, 5.0), ZOMBIE_BOUNDS), 1.0E-9);
     }
 }

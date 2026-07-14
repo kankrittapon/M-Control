@@ -22,7 +22,7 @@ public class MouseHandlerMixin {
     )
     private void rpg_redirectTurnToCamera(LocalPlayer player, double yRot, double xRot) {
         if (ClientControlState.isThirdPerson()) {
-            if (!ClientControlState.isMouseMovementMode() || ClientControlState.isCameraDragMode()) {
+            if (!ClientControlState.isMouseMovementMode()) {
                 ClientCameraController.onMouseInput(yRot, xRot);
             }
         } else {

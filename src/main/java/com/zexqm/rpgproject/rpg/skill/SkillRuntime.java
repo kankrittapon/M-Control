@@ -8,30 +8,41 @@ import com.zexqm.rpgproject.rpg.combat.RpgCombatService;
 import com.zexqm.rpgproject.rpg.combat.RpgCombatState;
 import com.zexqm.rpgproject.rpg.combat.RpgCombatStateProvider;
 import com.zexqm.rpgproject.rpg.combat.RpgDamageContext;
+import com.zexqm.rpgproject.rpg.combat.SmashResolver;
 import com.zexqm.rpgproject.rpg.status.RpgStatusService;
+import com.zexqm.rpgproject.network.RpgNetwork;
+import com.zexqm.rpgproject.network.SyncManaPacket;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public final class SkillRuntime {
     private static final Map<UUID, ActiveCast> ACTIVE = new HashMap<>();
     private static final Map<UUID, PendingCast> PENDING = new HashMap<>();
+    private static final Map<UUID, SkillLinkState> LINKS = new HashMap<>();
 
     public static SkillCastResult cast(ServerPlayer player, ResourceLocation skillId, SkillExecutionContext context) {
         RpgProject.LOGGER.info("[RPG Skill] request player={} skill={} direction={} target={} ground={}",
                 player.getScoreboardName(), skillId, context.direction(), context.targetEntityId(), context.groundPosition());
-        SkillDefinition skill = SkillRegistry.get(skillId);
-        if (skill == null) return result(player, skillId, SkillCastResult.UNKNOWN_SKILL, "not registered");
-        if (skill.debugOnly() && !player.hasPermissions(2))
-            return result(player, skillId, SkillCastResult.DEBUG_FORBIDDEN, "permission<2");
         RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
         RpgCombatState combat = player.getCapability(RpgCombatStateProvider.DATA).orElse(null);
-        if (data == null || combat == null || combat.actionLocked() || ACTIVE.containsKey(player.getUUID())
-                || PENDING.containsKey(player.getUUID()))
-            return result(player, skillId, SkillCastResult.INVALID_STATE, "capability/lock/active");
+        if (data == null || combat == null) return result(player, skillId, SkillCastResult.INVALID_STATE, "capability missing");
+        SkillDefinition firstRank = SkillRegistry.get(skillId);
+        boolean debug = firstRank != null && firstRank.debugOnly();
+        int learnedRank = debug ? firstRank.rank() : data.skillProgress().rank(skillId);
+        SkillDefinition skill = SkillRegistry.get(skillId, learnedRank);
+        if (skill == null) return result(player, skillId, learnedRank <= 0
+                ? SkillCastResult.NOT_LEARNED : SkillCastResult.UNKNOWN_SKILL, "rank=" + learnedRank + " not registered");
+        if (skill.debugOnly() && !player.hasPermissions(2))
+            return result(player, skillId, SkillCastResult.DEBUG_FORBIDDEN, "permission<2");
+        if (combat.actionLocked() || PENDING.containsKey(player.getUUID()))
+            return result(player, skillId, SkillCastResult.INVALID_STATE, "lock/active");
+        boolean transitioning = ACTIVE.containsKey(player.getUUID());
         if (data.rpgClass() != skill.rpgClass())
             return result(player, skillId, SkillCastResult.WRONG_CLASS, "player=" + data.rpgClass());
         if (skill.specialization() != null && data.specialization() != skill.specialization())
@@ -40,9 +51,7 @@ public final class SkillRuntime {
             return result(player, skillId, SkillCastResult.WRONG_WEAPON, "requirements=" + skill.weapons());
         if (PrimaryResourceType.forClass(data.rpgClass()) != skill.resourceType())
             return result(player, skillId, SkillCastResult.WRONG_RESOURCE, "required=" + skill.resourceType());
-        if (!skill.debugOnly() && data.skillProgress().rank(skillId) <= 0)
-            return result(player, skillId, SkillCastResult.NOT_LEARNED, "rank=0");
-        if (data.actionState() == SkillActionState.SHEATHED) {
+        if (!transitioning && data.actionState() == SkillActionState.SHEATHED) {
             if (!validTarget(skill, context))
                 return result(player, skillId, SkillCastResult.INVALID_TARGET, "auto-draw target validation");
             if (!data.requestToggleDraw(SkillRuntimeConfig.values().drawTicks(),
@@ -51,10 +60,23 @@ public final class SkillRuntime {
             PENDING.put(player.getUUID(), new PendingCast(skillId, context));
             return result(player, skillId, SkillCastResult.STARTED, "queued auto-draw");
         }
-        if (data.actionState() != SkillActionState.READY)
+        if (!transitioning && data.actionState() != SkillActionState.READY)
             return result(player, skillId, SkillCastResult.INVALID_STATE, "action=" + data.actionState());
         long gameTime = player.serverLevel().getServer().overworld().getGameTime();
-        if (!data.cooldownReady(skill.id(), gameTime))
+        SkillLinkState linkState = LINKS.computeIfAbsent(player.getUUID(), ignored -> new SkillLinkState());
+        if (!linkState.has(skill.links().requires(), gameTime))
+            return result(player, skillId, SkillCastResult.MISSING_SKILL_LINK,
+                    "required=" + skill.links().requires());
+        if (skill.links().useRequiredAnchor()) {
+            var anchor = linkState.anchor(skill.links().requires(), gameTime);
+            if (anchor == null)
+                return result(player, skillId, SkillCastResult.INVALID_TARGET,
+                        "required link has no resolved impact anchor");
+            context = new SkillExecutionContext(player, player.getEyePosition(), context.direction(),
+                    context.targetEntityId(), anchor);
+        }
+        boolean cooldownRecast = !data.cooldownReady(skill.id(), gameTime);
+        if (cooldownRecast && !skill.cooldownRecast().enabled())
             return result(player, skillId, SkillCastResult.COOLDOWN,
                     "remaining=" + data.cooldownRemaining(skill.id(), gameTime));
         var mana = player.getCapability(ManaProvider.MANA).orElse(null);
@@ -63,19 +85,32 @@ public final class SkillRuntime {
                     "primary=" + (mana == null ? "missing" : mana.getMana()) + " stamina=" + data.stamina());
         if (!validTarget(skill, context))
             return result(player, skillId, SkillCastResult.INVALID_TARGET, "range/direction/entity");
+        if (transitioning && !transitionTo(player, skill))
+            return result(player, skillId, SkillCastResult.INVALID_STATE, "transition rejected");
 
         mana.spend(skill.resourceCost());
         data.spendStamina(skill.staminaCost());
-        data.startCooldown(skill.id(), gameTime + skill.cooldownTicks());
+        if (skill.links().consumeRequiredOnCastStart()) {
+            linkState.consume(skill.links().requires(), gameTime);
+            RpgProject.LOGGER.info("[RPG Skill] link-consume player={} skill={} link={}",
+                    player.getScoreboardName(), skill.id(), skill.links().requires());
+        }
+        grantLink(skill, SkillLinkTiming.CAST_START, player, gameTime);
+        if (!cooldownRecast) data.startCooldown(skill.id(), gameTime + skill.cooldownTicks());
         data.startCast(skill.castTicks());
         combat.setCasting(true);
-        ACTIVE.put(player.getUUID(), new ActiveCast(skill, context, 0, false));
+        ACTIVE.put(player.getUUID(), new ActiveCast(skill, context, cooldownRecast, 0, false));
+        if (skill.facingPolicy() == FacingPolicy.AIM_ON_CAST
+                || skill.facingPolicy() == FacingPolicy.TARGET_ON_CAST) {
+            updateFacing(player, skill, context);
+        }
         return result(player, skillId, SkillCastResult.STARTED, "castTicks=" + skill.castTicks()
                 + " recoveryTicks=" + skill.recoveryTicks() + " mpCost=" + skill.resourceCost()
-                + " staminaCost=" + skill.staminaCost());
+                + " staminaCost=" + skill.staminaCost() + " cooldownRecast=" + cooldownRecast);
     }
 
     public static boolean tick(ServerPlayer player) {
+        boolean projectileActive = SkillProjectileRuntime.tick(player);
         PendingCast pending = PENDING.get(player.getUUID());
         if (pending != null) {
             RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
@@ -93,7 +128,7 @@ public final class SkillRuntime {
             return true;
         }
         ActiveCast active = ACTIVE.get(player.getUUID());
-        if (active == null) return false;
+        if (active == null) return projectileActive;
         RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
         RpgCombatState combat = player.getCapability(RpgCombatStateProvider.DATA).orElse(null);
         if (data == null || combat == null || combat.actionLocked()) {
@@ -101,9 +136,19 @@ public final class SkillRuntime {
             return true;
         }
         if (!active.recovering) {
-            applyProtection(active.skill, active.tick, combat, player);
+            if (active.skill.facingPolicy() == FacingPolicy.TRACK_AIM_UNTIL_RELEASE
+                    && active.tick <= firstHitTick(active.skill)) {
+                updateFacing(player, active.skill, active.context);
+            }
+            if (!active.cooldownRecast || active.skill.cooldownRecast().allowProtection())
+                applyProtection(active.skill, active.tick, combat, player);
             for (SkillDefinition.Hit hit : active.skill.hits()) {
-                if (hit.timingTick() == active.tick) executeHit(active.skill, hit, active.context);
+                if (hit.timingTick() == active.tick) {
+                    if (active.skill.targeting() == SkillTargetingType.AIM_PROJECTILE)
+                        SkillProjectileRuntime.spawn(active.skill, hit, active.context,
+                                active.cooldownRecast, gameTime(player));
+                    else executeHit(active.skill, hit, active.context, active.cooldownRecast, gameTime(player));
+                }
             }
             active.tick++;
             if (active.tick > active.skill.castTicks()) {
@@ -115,6 +160,7 @@ public final class SkillRuntime {
                         player.getScoreboardName(), active.skill.id(), active.skill.recoveryTicks());
             }
         } else if (++active.tick >= active.skill.recoveryTicks()) {
+            grantLink(active.skill, SkillLinkTiming.CAST_COMPLETE, player, gameTime(player));
             data.finishRecovery();
             ACTIVE.remove(player.getUUID());
             RpgProject.LOGGER.info("[RPG Skill] complete player={} skill={}",
@@ -132,25 +178,126 @@ public final class SkillRuntime {
         player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(RpgPlayerData::cancelAction);
     }
 
+    public static boolean requestCancel(ServerPlayer player, SkillCancelTrigger trigger) {
+        ActiveCast active = ACTIVE.get(player.getUUID());
+        if (active == null) return true;
+        if (!active.skill.transitions().allows(trigger, active.tick, firstHitTick(active.skill))) {
+            RpgProject.LOGGER.info("[RPG Skill] cancel-rejected player={} skill={} trigger={} tick={}",
+                    player.getScoreboardName(), active.skill.id(), trigger, active.tick);
+            return false;
+        }
+        ResourceLocation id = active.skill.id();
+        cancel(player);
+        RpgProject.LOGGER.info("[RPG Skill] cancel-accepted player={} skill={} trigger={}",
+                player.getScoreboardName(), id, trigger);
+        return true;
+    }
+
+    public static boolean movementCancelAllowed(ServerPlayer player) {
+        ActiveCast active = ACTIVE.get(player.getUUID());
+        return active != null && active.skill.transitions().allows(SkillCancelTrigger.MOVEMENT,
+                active.tick, firstHitTick(active.skill));
+    }
+
+    private static boolean transitionTo(ServerPlayer player, SkillDefinition incoming) {
+        ActiveCast active = ACTIVE.get(player.getUUID());
+        if (active == null) return true;
+        if (!incoming.transitions().interruptsCasting()
+                || !active.skill.transitions().allows(SkillCancelTrigger.SKILL,
+                active.tick, firstHitTick(active.skill))) return false;
+        return requestCancel(player, SkillCancelTrigger.SKILL);
+    }
+
+    private static int firstHitTick(SkillDefinition skill) {
+        return skill.hits().stream().mapToInt(SkillDefinition.Hit::timingTick).min()
+                .orElse(skill.castTicks() + 1);
+    }
+
+    private static void updateFacing(ServerPlayer player, SkillDefinition skill, SkillExecutionContext context) {
+        net.minecraft.world.phys.Vec3 direction = context.direction();
+        if (skill.facingPolicy() == FacingPolicy.TARGET_ON_CAST && context.targetEntityId() != null) {
+            var target = player.serverLevel().getEntity(context.targetEntityId());
+            if (target != null) direction = target.position().subtract(player.position());
+        }
+        if (direction.horizontalDistanceSqr() < 1.0E-6D) return;
+        float targetYaw = (float) Math.toDegrees(Math.atan2(-direction.x, direction.z));
+        float yaw = skill.turnSpeed() <= 0
+                ? targetYaw
+                : net.minecraft.util.Mth.approachDegrees(player.getYRot(), targetYaw, (float) skill.turnSpeed());
+        player.setYRot(yaw);
+        player.setYHeadRot(yaw);
+        player.setYBodyRot(yaw);
+    }
+
+    public static void clearTransient(ServerPlayer player) {
+        cancel(player);
+        SkillProjectileRuntime.clear(player);
+        SkillLinkState links = LINKS.remove(player.getUUID());
+        if (links != null) links.clear();
+    }
+
     public static MovementPolicy movementPolicy(ServerPlayer player) {
         ActiveCast active = ACTIVE.get(player.getUUID());
         return active == null ? MovementPolicy.FULL : active.skill.movementPolicy();
     }
 
-    private static void executeHit(SkillDefinition skill, SkillDefinition.Hit hit, SkillExecutionContext context) {
+    public static ResourceLocation activeSkillId(ServerPlayer player) {
+        ActiveCast active = ACTIVE.get(player.getUUID());
+        return active == null ? null : active.skill.id();
+    }
+
+    public static int activeCastTicks(ServerPlayer player) {
+        ActiveCast active = ACTIVE.get(player.getUUID());
+        return active == null ? 0 : active.skill.castTicks();
+    }
+
+    private static void executeHit(SkillDefinition skill, SkillDefinition.Hit hit,
+                                   SkillExecutionContext context, boolean cooldownRecast, long gameTime) {
         var targets = SkillHitResolver.resolve(skill, hit, context);
         RpgProject.LOGGER.info("[RPG Skill] hit-window player={} skill={} tick={} shape={} targets={}",
                 context.caster().getScoreboardName(), skill.id(), hit.timingTick(), skill.targeting(), targets.size());
         SkillDebugVisualizer.show(skill, hit, context, targets);
+        executeResolvedHit(skill, hit, context, cooldownRecast, gameTime, targets);
+    }
+
+    static void executeResolvedHit(SkillDefinition skill, SkillDefinition.Hit hit,
+                                   SkillExecutionContext context, boolean cooldownRecast, long gameTime,
+                                   Set<net.minecraft.world.entity.LivingEntity> targets) {
+        SkillDefinition.CooldownRecastPolicy recast = skill.cooldownRecast();
+        boolean recoveryApplied = false;
+        boolean successfulHit = false;
         for (var target : targets) {
             var result = RpgCombatService.apply(new RpgDamageContext(context.caster(), target, context.origin(),
-                    hit.baseDamage(), hit.powerType(), hit.coefficient(), true, true,
-                    hit.crowdControl(), hit.specialAttacks()));
+                    hit.baseDamage(), hit.powerType(), hit.coefficient() * (cooldownRecast
+                    ? recast.damageMultiplier() : 1.0), true,
+                    !cooldownRecast || recast.allowCritical(),
+                    hit.hitChanceBonus(), hit.criticalChanceBonus(),
+                    cooldownRecast && !recast.allowCrowdControl() ? null : hit.crowdControl(),
+                    cooldownRecast && !recast.allowSpecialAttacks() ? java.util.Set.of() : hit.specialAttacks()));
             RpgProject.LOGGER.info("[RPG Skill] damage skill={} target={}#{} outcome={} damage={} specials={} cc={}",
                     skill.id(), target.getType().toShortString(), target.getId(), result.outcome(),
                     result.damage(), result.specialAttacks(), result.crowdControl());
             if (result.outcome() != com.zexqm.rpgproject.rpg.combat.RpgDamageResult.Outcome.HIT) continue;
-            for (SkillDefinition.StatusPayload status : hit.statuses()) {
+            successfulHit = true;
+            var casterMana = context.caster().getCapability(ManaProvider.MANA).orElse(null);
+            var targetMana = target.getCapability(ManaProvider.MANA).orElse(null);
+            boolean allowRecovery = !hit.resources().recoverOncePerHitWindow() || !recoveryApplied;
+            if (casterMana != null && (!cooldownRecast || recast.allowResources())) {
+                var resourceResult = SkillResourceService.apply(casterMana, targetMana, hit.resources(), allowRecovery);
+                if (resourceResult.recovered() > 0) recoveryApplied = true;
+                if (resourceResult.recovered() > 0)
+                    RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> context.caster()),
+                            new SyncManaPacket(casterMana.getMana(), casterMana.getMaxMana()));
+                if (resourceResult.drained() > 0 && target instanceof ServerPlayer targetPlayer)
+                    RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> targetPlayer),
+                            new SyncManaPacket(targetMana.getMana(), targetMana.getMaxMana()));
+                if (resourceResult.status() != ResourceTransactionResult.Status.NO_EFFECT)
+                    RpgProject.LOGGER.info("[RPG Skill] resource skill={} target={}#{} result={} recovered={} drained={} transferred={}",
+                            skill.id(), target.getType().toShortString(), target.getId(), resourceResult.status(),
+                            resourceResult.recovered(), resourceResult.drained(), resourceResult.transferred());
+            }
+            for (SkillDefinition.StatusPayload status : cooldownRecast && !recast.allowStatuses()
+                    ? java.util.List.<SkillDefinition.StatusPayload>of() : hit.statuses()) {
                 var statusResult = RpgStatusService.apply(context.caster(), target, status.type(), status.durationTicks(),
                         status.intervalTicks(), status.potency(), status.maxStacks(), status.stacking(),
                         status.allowedProfiles());
@@ -158,7 +305,39 @@ public final class SkillRuntime {
                         skill.id(), target.getType().toShortString(), target.getId(), status.type(), statusResult,
                         status.durationTicks(), status.potency());
             }
+            for (SkillDefinition.SmashPayload smash : cooldownRecast && !recast.allowSmash()
+                    ? java.util.List.<SkillDefinition.SmashPayload>of() : hit.smashes()) {
+                var smashResult = SmashResolver.apply(target, smash.type(), smash.chance(), context.origin());
+                RpgProject.LOGGER.info("[RPG Skill] smash skill={} target={}#{} type={} chance={} result={} extension={}",
+                        skill.id(), target.getType().toShortString(), target.getId(), smash.type(), smash.chance(),
+                        smashResult.status(), smashResult.extensionTicks());
+            }
         }
+        if (successfulHit) grantLink(skill, SkillLinkTiming.SUCCESSFUL_HIT, context.caster(), gameTime);
+    }
+
+    private static void grantLink(SkillDefinition skill, SkillLinkTiming timing,
+                                  ServerPlayer player, long gameTime) {
+        var policy = skill.links();
+        if (policy.grants() == null || policy.grantTiming() != timing) return;
+        long expiration = gameTime + policy.grantDurationTicks();
+        LINKS.computeIfAbsent(player.getUUID(), ignored -> new SkillLinkState())
+                .grant(policy.grants(), expiration);
+        RpgProject.LOGGER.info("[RPG Skill] link-grant player={} skill={} link={} timing={} duration={} expiration={}",
+                player.getScoreboardName(), skill.id(), policy.grants(), timing,
+                policy.grantDurationTicks(), expiration);
+    }
+
+    static void recordLinkAnchor(SkillDefinition skill, ServerPlayer player, net.minecraft.world.phys.Vec3 anchor) {
+        ResourceLocation link = skill.links().grants();
+        if (link == null) return;
+        LINKS.computeIfAbsent(player.getUUID(), ignored -> new SkillLinkState()).setAnchor(link, anchor);
+        RpgProject.LOGGER.info("[RPG Skill] link-anchor player={} skill={} link={} position={}",
+                player.getScoreboardName(), skill.id(), link, anchor);
+    }
+
+    private static long gameTime(ServerPlayer player) {
+        return player.serverLevel().getServer().overworld().getGameTime();
     }
 
     private static SkillCastResult result(ServerPlayer player, ResourceLocation skill,
@@ -207,12 +386,15 @@ public final class SkillRuntime {
     private static final class ActiveCast {
         private final SkillDefinition skill;
         private final SkillExecutionContext context;
+        private final boolean cooldownRecast;
         private int tick;
         private boolean recovering;
 
-        private ActiveCast(SkillDefinition skill, SkillExecutionContext context, int tick, boolean recovering) {
+        private ActiveCast(SkillDefinition skill, SkillExecutionContext context, boolean cooldownRecast,
+                           int tick, boolean recovering) {
             this.skill = skill;
             this.context = context;
+            this.cooldownRecast = cooldownRecast;
             this.tick = tick;
             this.recovering = recovering;
         }

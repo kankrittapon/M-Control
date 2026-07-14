@@ -1,0 +1,18 @@
+{
+  "skill_id": "rpg_project:wizard_fireball_explosion",
+  "class": "wizard",
+  "rank": 2,
+  "targeting": "ground_aoe",
+  "weapons": {"weapon_set": "main", "main": true, "sub": true},
+  "resource_type": "mp",
+  "resource_cost": 75,
+  "cooldown_ticks": 280,
+  "cast_ticks": 4,
+  "recovery_ticks": 8,
+  "movement_policy": "rotate_only",
+  "transitions": {},
+  "range": 24.0,
+  "radius": 2.75,
+  "links": {"requires": "rpg_project:fireball_explosion_ready", "consume_required_on_cast_start": true, "use_required_anchor": true},
+  "hits": [{"timing_tick": 3, "impact_shape": "circle", "radius": 2.75, "max_targets": 10, "coefficient": 2.6879, "power_type": "magic", "crowd_control": "knockdown", "special_attacks": ["down_attack"], "statuses": [{"type": "burn", "duration_ticks": 180, "interval_ticks": 60, "potency": 15.0, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]}]
+}

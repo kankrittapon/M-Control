@@ -48,13 +48,15 @@ public final class CombatConfig extends SimpleJsonResourceReloadListener {
                          int stiffnessTicks, int stunTicks, int knockdownTicks, int floatingTicks,
                          int boundTicks, int knockbackTicks, int freezingTicks,
                          double floatingVelocity, double knockbackVelocity,
+                         int downSmashExtensionTicks, int airSmashExtensionTicks,
+                         double smashHorizontalVelocity, double airSmashVerticalVelocity,
                          double backAttackMultiplier, double downAttackMultiplier,
                          double airAttackMultiplier, double speedAttackMultiplier,
                          double counterAttackMultiplier) {
         public static Values defaults() {
             return new Values(0.10, 0.10, 0.95, 0.80, 180.0, 120.0, 1.0, 0.5,
                     2.0, 100, 100, 0.7, 1.0, 20, 40, 40, 20, 40, 10, 40,
-                    0.8, 0.6, 1.2, 1.2, 1.7, 1.2, 1.7);
+                    0.8, 0.6, 20, 12, 0.8, -0.15, 1.2, 1.2, 1.7, 1.2, 1.7);
         }
 
         static Values parse(JsonObject root) {
@@ -64,6 +66,7 @@ public final class CombatConfig extends SimpleJsonResourceReloadListener {
             JsonObject cc = object(root, "crowd_control");
             JsonObject durations = object(cc, "durations");
             JsonObject special = object(root, "special_damage");
+            JsonObject smash = object(root, "smash");
             Values parsed = new Values(
                     number(damage, "power_scale", defaults.powerScale),
                     number(damage, "minimum_hit_chance", defaults.minimumHitChance),
@@ -87,6 +90,10 @@ public final class CombatConfig extends SimpleJsonResourceReloadListener {
                     integer(durations, "freezing", defaults.freezingTicks),
                     number(cc, "floating_velocity", defaults.floatingVelocity),
                     number(cc, "knockback_velocity", defaults.knockbackVelocity),
+                    integer(smash, "down_extension_ticks", defaults.downSmashExtensionTicks),
+                    integer(smash, "air_extension_ticks", defaults.airSmashExtensionTicks),
+                    number(smash, "horizontal_velocity", defaults.smashHorizontalVelocity),
+                    number(smash, "air_vertical_velocity", defaults.airSmashVerticalVelocity),
                     number(special, "back_attack", defaults.backAttackMultiplier),
                     number(special, "down_attack", defaults.downAttackMultiplier),
                     number(special, "air_attack", defaults.airAttackMultiplier),
@@ -104,7 +111,9 @@ public final class CombatConfig extends SimpleJsonResourceReloadListener {
                     || ccImmunityTicks < 0 || ccChainResetTicks < 0 || stiffnessPoints <= 0
                     || standardCcPoints <= 0 || stiffnessTicks < 0 || stunTicks < 0 || knockdownTicks < 0
                     || floatingTicks < 0 || boundTicks < 0 || knockbackTicks < 0 || freezingTicks < 0
-                    || floatingVelocity < 0 || knockbackVelocity < 0 || backAttackMultiplier < 0
+                    || floatingVelocity < 0 || knockbackVelocity < 0 || downSmashExtensionTicks < 0
+                    || airSmashExtensionTicks < 0 || smashHorizontalVelocity < 0
+                    || airSmashVerticalVelocity > 0 || backAttackMultiplier < 0
                     || downAttackMultiplier < 0 || airAttackMultiplier < 0 || speedAttackMultiplier < 0
                     || counterAttackMultiplier < 0) {
                 throw new JsonParseException("Combat configuration contains an out-of-range value");

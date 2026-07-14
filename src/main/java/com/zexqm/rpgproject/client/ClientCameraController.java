@@ -25,7 +25,6 @@ public final class ClientCameraController {
 
     // ── Camera distance behind the player ────────────────────────────────
     private static double cameraDistance = 4.0;
-    private static double dragSensitivity = 0.15;
 
     // ── Initialization guard ─────────────────────────────────────────────
     private static boolean initialized = false;
@@ -63,12 +62,6 @@ public final class ClientCameraController {
     public static void onMouseInput(double yRot, double xRot) {
         targetCameraYaw += (float) yRot * 0.15F;
         targetCameraPitch = Mth.clamp(targetCameraPitch + (float) xRot * 0.15F, MIN_PITCH, MAX_PITCH);
-    }
-
-    public static void onCursorDrag(double deltaX, double deltaY) {
-        targetCameraYaw += (float) (deltaX * dragSensitivity);
-        targetCameraPitch = Mth.clamp(
-                targetCameraPitch + (float) (deltaY * dragSensitivity), MIN_PITCH, MAX_PITCH);
     }
 
     // =====================================================================
@@ -124,14 +117,6 @@ public final class ClientCameraController {
 
     public static void setCameraDistance(double distance) {
         cameraDistance = Mth.clamp(distance, MIN_DISTANCE, MAX_DISTANCE);
-    }
-
-    public static double getDragSensitivity() {
-        return dragSensitivity;
-    }
-
-    public static void setDragSensitivity(double sensitivity) {
-        dragSensitivity = Mth.clamp(sensitivity, 0.03D, 0.5D);
     }
 
     // =====================================================================

@@ -6,8 +6,13 @@
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/4.Multiple Magic Arrows.png",
   "playable": false,
-  "unavailable_reason": "MCP ranks_count is 0; rank semantics, SP costs, prerequisites, and combat definition are unresolved",
-  "ranks": [],
+  "unavailable_reason": "Missing verified SP cost, prerequisites, and combat definition; single-rank metadata comes from the audited current tooltip",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 49
+    }
+  ],
   "prerequisites": [],
   "mutually_exclusive": []
 }

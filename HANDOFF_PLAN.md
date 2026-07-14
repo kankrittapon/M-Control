@@ -1,5 +1,13 @@
 # BRPG Development Handoff Plan
 
+## Phase 2.5 Smash Foundation
+
+Before production Wizard skills, World Core models `DOWN_SMASH` and `AIR_SMASH` separately from
+Crowd Control and Special Attack damage. Smash requires the matching downed/floated state, does not
+consume the 2.0 CC budget, is not rejected by CC immunity, and remains server-authoritative. Boss
+and Unstoppable profiles are immune by default. Air Smash transitions the target to a configurable
+knockdown window on landing. Skill JSON declares per-hit `smashes` with a server-rolled `chance`.
+
 Updated: 2026-07-14
 
 This document is the handoff source of truth for the next Codex task. `README.md` describes the

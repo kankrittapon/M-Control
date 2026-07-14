@@ -48,6 +48,19 @@ class SkillProgressionTest {
     }
 
     @Test
+    void nextRankRequiresItsOwnProductionCombatDefinition() {
+        SkillCatalogEntry twoRanks = new SkillCatalogEntry(ID, "wizard.learn_test", "Learn Test", "Test",
+                RpgClass.WIZARD, SkillTree.MAIN, null, true, "",
+                List.of(new SkillRankDefinition(1, 1, 1), new SkillRankDefinition(2, 1, 1)), List.of(), Set.of());
+        SkillCatalog.replaceForTests(Map.of(ID, twoRanks));
+        SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
+        RpgPlayerData data = new RpgPlayerData();
+        data.addSkillExperience(202);
+        assertTrue(SkillLearningService.upgrade(data, ID).success());
+        assertEquals(SkillAvailability.METADATA_ONLY, SkillLearningService.availability(data, ID));
+    }
+
+    @Test
     void upgradeDowngradeAndPersistenceKeepPointsConsistent() {
         SkillCatalog.replaceForTests(Map.of(ID, entry(true)));
         SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
@@ -169,20 +182,33 @@ class SkillProgressionTest {
     }
 
     @Test
-    void wizardMainSnapshotContainsThirtyTwoGatedEntries() throws Exception {
+    void wizardMainSnapshotContainsFireballVerticalSliceAndThirtyTwoEntries() throws Exception {
         Path directory = Path.of("src/main/resources/data/rpg_project/rpg_skill_catalog");
         try (var files = Files.list(directory)) {
             List<Path> wizardFiles = files.filter(path -> path.getFileName().toString().startsWith("wizard_"))
                     .toList();
             assertEquals(32, wizardFiles.size());
+            int playable = 0;
             for (Path path : wizardFiles) {
                 ResourceLocation id = new ResourceLocation("rpg_project",
                         path.getFileName().toString().replace(".json", ""));
                 SkillCatalogEntry parsed = SkillCatalog.parse(id,
                         JsonParser.parseString(Files.readString(path)).getAsJsonObject());
-                assertFalse(parsed.playable(), id.toString());
+                if (parsed.playable()) playable++;
                 assertEquals(id.getPath(), parsed.mcpId());
+                if (id.getPath().equals("wizard_fireball")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(10, 15, 20, 30), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                } else if (id.getPath().equals("wizard_fireball_explosion")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(new ResourceLocation("rpg_project", "wizard_fireball"),
+                            parsed.prerequisites().get(0).skillId());
+                } else {
+                    assertFalse(parsed.playable(), id.toString());
+                }
             }
+            assertEquals(2, playable);
         }
     }
 
@@ -219,6 +245,6 @@ class SkillProgressionTest {
                 new SkillWeaponRequirement(WeaponSet.MAIN, true, true, false), PrimaryResourceType.MP,
                 1, 0, 1, 1, 1, MovementPolicy.FULL, CancelPolicy.NEVER, 8, 0,
                 List.of(new SkillDefinition.Hit(1, 1, 1, 0, RpgPowerType.MAGIC,
-                        null, Set.of(), List.of())), List.of());
+                        null, Set.of(), List.of(), List.of())), List.of());
     }
 }
