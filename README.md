@@ -173,12 +173,17 @@ Run `/reload` after changing a profile. Invalid or missing profiles fall back to
 /rpg debug cast rpg_project:debug_cone
 /rpg debug cast rpg_project:debug_ground
 /rpg skills list
+/rpg skills list 2
+/rpg skills inspect rpg_project:wizard_fireball
 /rpg skills upgrade rpg_project:wizard_fireball
 /rpg skills downgrade rpg_project:wizard_fireball
 /rpg skills reset
 ```
 
 Protection and debug mutation commands require operator permission level 2.
+
+The skill list is sorted and paged eight entries at a time. `inspect` shows description, readiness
+reason, required levels, and known/unknown SP costs without flooding chat.
 
 `/rpg equip` equips the RPG weapon currently held in the main hand into its logical slot.
 

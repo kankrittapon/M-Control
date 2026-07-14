@@ -4,6 +4,7 @@ import com.google.gson.JsonParser;
 import com.zexqm.rpgproject.rpg.RpgClass;
 import com.zexqm.rpgproject.rpg.RpgPlayerData;
 import com.zexqm.rpgproject.rpg.WeaponSet;
+import com.zexqm.rpgproject.rpg.Specialization;
 import com.zexqm.rpgproject.rpg.combat.RpgPowerType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.SharedConstants;
@@ -63,6 +64,29 @@ class SkillProgressionTest {
         assertEquals(initial - 2, loaded.availableSkillPoints());
         assertTrue(SkillLearningService.downgrade(loaded, ID).success());
         assertEquals(initial, loaded.availableSkillPoints());
+    }
+
+    @Test
+    void learnedRanksSurviveCloneClassSpecAndRepeatedPersistence() {
+        SkillCatalog.replaceForTests(Map.of(ID, entry(true)));
+        SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
+        RpgPlayerData original = new RpgPlayerData();
+        original.setLevel(10);
+        assertTrue(SkillLearningService.upgrade(original, ID).success());
+
+        RpgPlayerData deathClone = new RpgPlayerData();
+        deathClone.copyFrom(original);
+        deathClone.setClass(RpgClass.NINJA);
+        deathClone.setSpecialization(Specialization.AWAKENING);
+        assertEquals(1, deathClone.skillProgress().rank(ID));
+        assertEquals(SkillAvailability.WRONG_CLASS, SkillLearningService.availability(deathClone, ID));
+
+        deathClone.setClass(RpgClass.WIZARD);
+        RpgPlayerData dimensionRoundTrip = new RpgPlayerData();
+        dimensionRoundTrip.load(deathClone.save());
+        assertEquals(1, dimensionRoundTrip.skillProgress().rank(ID));
+        assertEquals(original.spentSkillPoints(), dimensionRoundTrip.spentSkillPoints());
+        assertEquals(original.availableSkillPoints(), dimensionRoundTrip.availableSkillPoints());
     }
 
     @Test

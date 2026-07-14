@@ -143,7 +143,10 @@ Goal: make skills data-driven before creating the Wizard kit.
 
 Status: backend catalog/progression checkpoint implemented on 2026-07-14. Catalog entries, rank
 persistence, server learning validation, commands, replay-protected network requests, and client
-availability sync are present. Action slots and UI remain later phases.
+availability sync are present. Phase 4.1 hardening added paged/inspect commands, automatic online
+player sync after datapack reload, respawn/dimension sync, persistence acceptance tests, packet
+size validation, and nonce replay tests. Unit tests, build, and all 10 Forge GameTests pass.
+Action slots and UI remain later phases.
 
 1. Define stable skill IDs, ranks, prerequisites, specialization rules, and Skill Point costs.
 2. Add server-side learn, upgrade, reset, and validation services.

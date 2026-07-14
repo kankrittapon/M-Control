@@ -30,6 +30,7 @@ import com.zexqm.rpgproject.rpg.DerivedStats;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.entity.EntityAttributeModificationEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -61,6 +62,7 @@ import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.PacketDistributor;
 import com.zexqm.rpgproject.network.CommonPacketSync;
+import net.minecraft.commands.CommandSourceStack;
 
 @Mod.EventBusSubscriber(modid = RpgProject.MOD_ID)
 public final class CommonEvents {
@@ -71,6 +73,15 @@ public final class CommonEvents {
         event.addListener(new SkillRuntimeConfig());
         event.addListener(new SkillCatalog());
         event.addListener(new SkillRegistry());
+    }
+
+    @SubscribeEvent
+    public static void syncDatapacks(OnDatapackSyncEvent event) {
+        if (event.getPlayer() != null) {
+            syncSkillProgress(event.getPlayer());
+            return;
+        }
+        event.getPlayerList().getPlayers().forEach(CommonEvents::syncSkillProgress);
     }
 
     @Mod.EventBusSubscriber(modid = RpgProject.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
@@ -219,19 +230,14 @@ public final class CommonEvents {
                                     return result == com.zexqm.rpgproject.rpg.skill.SkillCastResult.STARTED ? 1 : 0;
                                 }))))
                 .then(Commands.literal("skills")
-                        .then(Commands.literal("list").executes(ctx -> {
-                            ServerPlayer player = ctx.getSource().getPlayerOrException();
-                            var data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
-                            if (data == null) return 0;
-                            long count = SkillCatalog.all().stream()
-                                    .filter(skill -> skill.rpgClass() == data.rpgClass()).peek(skill ->
-                                            ctx.getSource().sendSuccess(() -> Component.literal(skill.id() + " rank="
-                                                    + data.skillProgress().rank(skill.id()) + "/" + skill.maximumRank()
-                                                    + " availability=" + SkillLearningService.availability(data, skill.id())
-                                                    + (skill.playable() ? "" : " reason=" + skill.unavailableReason())), false))
-                                    .count();
-                            return (int) count;
-                        }))
+                        .then(Commands.literal("list")
+                                .executes(ctx -> listSkills(ctx.getSource(), 1))
+                                .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                                        .executes(ctx -> listSkills(ctx.getSource(),
+                                                IntegerArgumentType.getInteger(ctx, "page")))))
+                        .then(Commands.literal("inspect")
+                                .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx ->
+                                        inspectSkill(ctx.getSource(), ResourceLocationArgument.getId(ctx, "skill")))))
                         .then(Commands.literal("upgrade")
                                 .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
@@ -432,6 +438,11 @@ public final class CommonEvents {
     }
 
     @SubscribeEvent
+    public static void respawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) syncSkillProgress(player);
+    }
+
+    @SubscribeEvent
     public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             SkillRuntime.cancel(player);
@@ -445,6 +456,7 @@ public final class CommonEvents {
             SkillRuntime.cancel(player);
             player.getCapability(RpgCombatStateProvider.DATA).ifPresent(RpgCombatState::clear);
             data.sheathe(); syncRpg(player, data);
+            CommonPacketSync.syncSkillProgress(player, data);
         });
     }
 
@@ -453,6 +465,53 @@ public final class CommonEvents {
                 data.weaponDrawn(), data.inCombat(), data.level(), data.experience(),
                 data.requiredExperience(), data.availableSkillPoints(), data.stamina(), data.maxStamina(),
                 data.breath().level(), data.strength().level(), data.healthTraining().level()));
+    }
+
+    private static void syncSkillProgress(ServerPlayer player) {
+        player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data ->
+                CommonPacketSync.syncSkillProgress(player, data));
+    }
+
+    private static int listSkills(CommandSourceStack source, int requestedPage)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+        if (data == null) return 0;
+        java.util.List<com.zexqm.rpgproject.rpg.skill.SkillCatalogEntry> skills = SkillCatalog.all().stream()
+                .filter(skill -> skill.rpgClass() == data.rpgClass())
+                .sorted(java.util.Comparator.comparing(skill -> skill.id().toString())).toList();
+        int pageSize = 8;
+        int pages = Math.max(1, (skills.size() + pageSize - 1) / pageSize);
+        int page = Math.min(requestedPage, pages);
+        source.sendSuccess(() -> Component.literal("Skills " + data.rpgClass() + " page " + page + "/" + pages
+                + " (use /rpg skills inspect <id> for details)"), false);
+        skills.stream().skip((long) (page - 1) * pageSize).limit(pageSize).forEach(skill ->
+                source.sendSuccess(() -> Component.literal(skill.id() + " rank="
+                        + data.skillProgress().rank(skill.id()) + "/" + skill.maximumRank()
+                        + " availability=" + SkillLearningService.availability(data, skill.id())), false));
+        return Math.min(pageSize, Math.max(0, skills.size() - (page - 1) * pageSize));
+    }
+
+    private static int inspectSkill(CommandSourceStack source, net.minecraft.resources.ResourceLocation id)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+        var skill = SkillCatalog.get(id);
+        if (data == null || skill == null) {
+            source.sendFailure(Component.literal("Unknown catalog skill " + id));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(skill.id() + " [" + skill.name() + "] MCP=" + skill.mcpId()
+                + " tree=" + skill.tree() + " rank=" + data.skillProgress().rank(id) + "/"
+                + skill.maximumRank() + " availability=" + SkillLearningService.availability(data, id)), false);
+        source.sendSuccess(() -> Component.literal(skill.description().isBlank()
+                ? "Description unavailable" : skill.description()), false);
+        if (!skill.playable()) source.sendSuccess(() -> Component.literal("Gated: " + skill.unavailableReason()), false);
+        String ranks = skill.ranks().stream().map(rank -> "R" + rank.rank() + " Lv" + rank.requiredLevel()
+                        + " SP" + (rank.hasSkillPointCost() ? rank.skillPointCost() : "?"))
+                .collect(java.util.stream.Collectors.joining(", "));
+        if (!ranks.isBlank()) source.sendSuccess(() -> Component.literal(ranks), false);
+        return 1;
     }
 
     public static void syncCombatState(ServerPlayer player) {

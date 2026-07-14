@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
+import java.util.UUID;
 
 public record SkillProgressActionPacket(ResourceLocation skillId, Operation operation, long nonce) {
     private static final java.util.Map<java.util.UUID, Long> LAST_NONCE = new java.util.HashMap<>();
@@ -27,8 +28,13 @@ public record SkillProgressActionPacket(ResourceLocation skillId, Operation oper
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
-            if (player == null || packet.nonce <= LAST_NONCE.getOrDefault(player.getUUID(), -1L)) return;
-            LAST_NONCE.put(player.getUUID(), packet.nonce);
+            if (player == null) return;
+            if (!acceptNonce(player.getUUID(), packet.nonce)) {
+                com.zexqm.rpgproject.RpgProject.LOGGER.debug(
+                        "[RPG Skill Learn] player={} skill={} result=REJECTED reason=REPLAYED_NONCE nonce={}",
+                        player.getScoreboardName(), packet.skillId, packet.nonce);
+                return;
+            }
             player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
                 var result = packet.operation == Operation.UPGRADE
                         ? SkillLearningService.upgrade(data, packet.skillId)
@@ -45,6 +51,14 @@ public record SkillProgressActionPacket(ResourceLocation skillId, Operation oper
     public static void clearReplayState(ServerPlayer player) {
         LAST_NONCE.remove(player.getUUID());
     }
+
+    static boolean acceptNonce(UUID playerId, long nonce) {
+        if (nonce < 0 || nonce <= LAST_NONCE.getOrDefault(playerId, -1L)) return false;
+        LAST_NONCE.put(playerId, nonce);
+        return true;
+    }
+
+    static void clearReplayState(UUID playerId) { LAST_NONCE.remove(playerId); }
 
     public enum Operation { UPGRADE, DOWNGRADE }
 }
