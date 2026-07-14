@@ -1,0 +1,26 @@
+{
+  "mcp_id": "wizard_concentrated_magic_arrow",
+  "name": "Concentrated Magic Arrow",
+  "description": "Concentrated Magic Arrow is a combat skill for the Witch and Wizard. Draws magical power to shoot an arrow with it.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/3.Concentrated Magic Arrow.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 12
+    },
+    {
+      "rank": 2,
+      "required_level": 26
+    },
+    {
+      "rank": 3,
+      "required_level": 38
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

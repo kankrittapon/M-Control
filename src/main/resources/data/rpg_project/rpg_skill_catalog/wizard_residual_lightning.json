@@ -1,0 +1,30 @@
+{
+  "mcp_id": "wizard_residual_lightning",
+  "name": "Residual Lightning",
+  "description": "Residual Lightning is a combat skill for the Witch and Wizard. Widely spreads remaining lightning power to attack enemies.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/15.Residual Lightning.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 19
+    },
+    {
+      "rank": 2,
+      "required_level": 26
+    },
+    {
+      "rank": 3,
+      "required_level": 33
+    },
+    {
+      "rank": 4,
+      "required_level": 40
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

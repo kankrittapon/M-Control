@@ -1,0 +1,26 @@
+{
+  "mcp_id": "wizard_earth_s_response",
+  "name": "Earth's Response",
+  "description": "Earth's Response is a combat skill for the Witch and Wizard. While swiftly dodging left or right, strongly strikes the ground to attack the enemy ahead with protruding rocks.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/17.Earth's Response.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 1
+    },
+    {
+      "rank": 2,
+      "required_level": 23
+    },
+    {
+      "rank": 3,
+      "required_level": 38
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

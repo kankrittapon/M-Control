@@ -2,7 +2,7 @@
 
 Minecraft Forge 1.20.1 action-RPG control and world-core mod. The project currently focuses on
 server-authoritative progression, combat calculations, camera controls, and reusable class systems.
-Class-specific skills, models, and animations are intentionally deferred until the world core is stable.
+Playable class skills, models, and animations are intentionally deferred until their catalog data is complete.
 
 ## Requirements
 
@@ -111,6 +111,17 @@ Class-specific skills, models, and animations are intentionally deferred until t
 - Burn, Slow, and Defense Down are transient Status effects with refresh, stronger-replace, or stacking rules.
 - Debug-only datapack skills exercise every runtime path; production Wizard/Ninja skills are still deferred.
 
+### Skill Catalog And Progression
+
+- Skill metadata is separate from executable combat definitions.
+- Learned ranks and spent/available Skill Points persist in player data.
+- Learning, upgrading, downgrading, and reset validation is server-authoritative.
+- Client requests use replay-protected packets and receive rank, SP, and availability state from the server.
+- The Wizard Main MCP catalog contains all 32 stable IDs, names, descriptions, icon source paths,
+  rank counts, and known required levels.
+- All Wizard Main entries are currently metadata-only and cannot be learned or cast until SP costs,
+  prerequisites, and combat definitions are approved.
+
 ## Controls
 
 | Input | Action |
@@ -135,6 +146,7 @@ src/main/resources/data/rpg_project/rpg_classes/ninja.json
 src/main/resources/data/rpg_project/rpg_world_core/combat.json
 src/main/resources/data/rpg_project/rpg_world_core/skill_runtime.json
 src/main/resources/data/rpg_project/rpg_skills/debug_*.json
+src/main/resources/data/rpg_project/rpg_skill_catalog/wizard_*.json
 src/main/resources/data/rpg_project/tags/entity_types/control/*.json
 ```
 
@@ -160,6 +172,10 @@ Run `/reload` after changing a profile. Invalid or missing profiles fall back to
 /rpg debug cast rpg_project:debug_ray
 /rpg debug cast rpg_project:debug_cone
 /rpg debug cast rpg_project:debug_ground
+/rpg skills list
+/rpg skills upgrade rpg_project:wizard_fireball
+/rpg skills downgrade rpg_project:wizard_fireball
+/rpg skills reset
 ```
 
 Protection and debug mutation commands require operator permission level 2.
@@ -181,7 +197,7 @@ Example Wizard test setup:
 
 - Equipment screen for the three RPG weapon slots.
 - Visible Draw/Sheathe weapon models and player animations.
-- Playable Wizard or Ninja skills and skill trees.
+- Playable Wizard or Ninja combat definitions and skill tree UI.
 - Skill Point spending UI.
 - Full application of SA/CC/Grab through playable skills.
 - Mob level display and data-driven world-region rules.

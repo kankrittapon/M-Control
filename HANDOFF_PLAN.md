@@ -1,6 +1,6 @@
 # BRPG Development Handoff Plan
 
-Updated: 2026-07-13
+Updated: 2026-07-14
 
 This document is the handoff source of truth for the next Codex task. `README.md` describes the
 currently working systems. `WhatIdo.md` is historical and may contain outdated targeting or skill
@@ -141,6 +141,10 @@ without class-specific implementation.
 
 Goal: make skills data-driven before creating the Wizard kit.
 
+Status: backend catalog/progression checkpoint implemented on 2026-07-14. Catalog entries, rank
+persistence, server learning validation, commands, replay-protected network requests, and client
+availability sync are present. Action slots and UI remain later phases.
+
 1. Define stable skill IDs, ranks, prerequisites, specialization rules, and Skill Point costs.
 2. Add server-side learn, upgrade, reset, and validation services.
 3. Persist learned skill ranks and synchronize only required client data.
@@ -153,6 +157,9 @@ Goal: make skills data-driven before creating the Wizard kit.
 
 Completion gate: Skill Points can be spent and refunded safely, and invalid client requests are
 rejected by the server.
+
+The Wizard Main catalog has been imported as 32 metadata-only entries. See
+`docs/WIZARD_MAIN_DATA_GAPS.md`; no entry becomes playable until its missing source data is approved.
 
 ### Phase 4: Wizard Vertical Slice
 

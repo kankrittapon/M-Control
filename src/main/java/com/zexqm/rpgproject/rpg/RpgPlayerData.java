@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 import com.zexqm.rpgproject.rpg.skill.SkillActionState;
+import com.zexqm.rpgproject.rpg.skill.PlayerSkillProgress;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +24,7 @@ public class RpgPlayerData {
     private long experience;
     private int totalSkillPoints;
     private int spentSkillPoints;
+    private final PlayerSkillProgress skillProgress = new PlayerSkillProgress();
     private final TrainingProgress breath = new TrainingProgress();
     private final TrainingProgress strength = new TrainingProgress();
     private final TrainingProgress healthTraining = new TrainingProgress();
@@ -46,6 +48,12 @@ public class RpgPlayerData {
     public int totalSkillPoints() { return totalSkillPoints; }
     public int spentSkillPoints() { return spentSkillPoints; }
     public int availableSkillPoints() { return Math.max(0, totalSkillPoints - spentSkillPoints); }
+    public PlayerSkillProgress skillProgress() { return skillProgress; }
+    public void setLearnedSkillRank(ResourceLocation skill, int rank, int spentDelta) {
+        skillProgress.setRank(skill, rank);
+        spentSkillPoints = Math.max(0, Math.min(totalSkillPoints, spentSkillPoints + spentDelta));
+    }
+    public void resetLearnedSkills() { skillProgress.load(new CompoundTag()); spentSkillPoints = 0; }
     public DerivedStats stats() { return ClassProfileManager.get(rpgClass).atLevel(level); }
     public TrainingProgress breath() { return breath; }
     public TrainingProgress strength() { return strength; }
@@ -203,6 +211,7 @@ public class RpgPlayerData {
         tag.putLong("Experience", experience);
         tag.putInt("TotalSkillPoints", totalSkillPoints);
         tag.putInt("SpentSkillPoints", spentSkillPoints);
+        tag.put("LearnedSkills", skillProgress.save());
         tag.put("Breath", breath.save());
         tag.put("Strength", strength.save());
         tag.put("HealthTraining", healthTraining.save());
@@ -221,6 +230,7 @@ public class RpgPlayerData {
         experience = Math.max(0, tag.getLong("Experience"));
         totalSkillPoints = Math.max(0, tag.getInt("TotalSkillPoints"));
         spentSkillPoints = Math.max(0, Math.min(totalSkillPoints, tag.getInt("SpentSkillPoints")));
+        if (tag.contains("LearnedSkills")) skillProgress.load(tag.getCompound("LearnedSkills"));
         if (tag.contains("Breath")) breath.load(tag.getCompound("Breath"));
         if (tag.contains("Strength")) strength.load(tag.getCompound("Strength"));
         if (tag.contains("HealthTraining")) healthTraining.load(tag.getCompound("HealthTraining"));

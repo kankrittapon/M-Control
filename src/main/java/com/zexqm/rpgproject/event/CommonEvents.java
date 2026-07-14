@@ -49,6 +49,8 @@ import com.zexqm.rpgproject.network.SyncSkillStatePacket;
 import com.zexqm.rpgproject.network.SyncEntityStatusesPacket;
 import com.zexqm.rpgproject.rpg.skill.SkillRuntimeConfig;
 import com.zexqm.rpgproject.rpg.skill.SkillRegistry;
+import com.zexqm.rpgproject.rpg.skill.SkillCatalog;
+import com.zexqm.rpgproject.rpg.skill.SkillLearningService;
 import com.zexqm.rpgproject.rpg.skill.SkillRuntime;
 import com.zexqm.rpgproject.rpg.skill.SkillExecutionContext;
 import com.zexqm.rpgproject.rpg.skill.MovementPolicy;
@@ -58,6 +60,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.PacketDistributor;
+import com.zexqm.rpgproject.network.CommonPacketSync;
 
 @Mod.EventBusSubscriber(modid = RpgProject.MOD_ID)
 public final class CommonEvents {
@@ -66,6 +69,7 @@ public final class CommonEvents {
         event.addListener(new ClassProfileManager());
         event.addListener(new CombatConfig());
         event.addListener(new SkillRuntimeConfig());
+        event.addListener(new SkillCatalog());
         event.addListener(new SkillRegistry());
     }
 
@@ -87,13 +91,19 @@ public final class CommonEvents {
                 .then(Commands.literal("class").then(Commands.argument("value", StringArgumentType.word()).executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     RpgClass value = RpgClass.valueOf(StringArgumentType.getString(ctx, "value").toUpperCase());
-                    player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> { data.setClass(value); syncRpg(player, data); });
+                    player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
+                        data.setClass(value); syncRpg(player, data);
+                        CommonPacketSync.syncSkillProgress(player, data);
+                    });
                     return 1;
                 })))
                 .then(Commands.literal("specialization").then(Commands.argument("value", StringArgumentType.word()).executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     Specialization value = Specialization.valueOf(StringArgumentType.getString(ctx, "value").toUpperCase());
-                    player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> { data.setSpecialization(value); syncRpg(player, data); });
+                    player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
+                        data.setSpecialization(value); syncRpg(player, data);
+                        CommonPacketSync.syncSkillProgress(player, data);
+                    });
                     return 1;
                 })))
                 .then(Commands.literal("equip").executes(ctx -> {
@@ -111,6 +121,7 @@ public final class CommonEvents {
                     player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
                         int gained = data.addExperience(amount);
                         syncRpg(player, data);
+                        CommonPacketSync.syncSkillProgress(player, data);
                         player.displayClientMessage(Component.literal("EXP +" + amount + " Levels gained=" + gained), false);
                     });
                     return 1;
@@ -118,7 +129,9 @@ public final class CommonEvents {
                 .then(Commands.literal("setlevel").then(Commands.argument("level", IntegerArgumentType.integer(1, 100)).executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
-                        data.setLevel(IntegerArgumentType.getInteger(ctx, "level")); syncRpg(player, data);
+                        data.setLevel(IntegerArgumentType.getInteger(ctx, "level"));
+                        syncRpg(player, data);
+                        CommonPacketSync.syncSkillProgress(player, data);
                     });
                     return 1;
                 })))
@@ -205,6 +218,51 @@ public final class CommonEvents {
                                     ctx.getSource().sendSuccess(() -> Component.literal("Skill cast result=" + result), false);
                                     return result == com.zexqm.rpgproject.rpg.skill.SkillCastResult.STARTED ? 1 : 0;
                                 }))))
+                .then(Commands.literal("skills")
+                        .then(Commands.literal("list").executes(ctx -> {
+                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                            var data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+                            if (data == null) return 0;
+                            long count = SkillCatalog.all().stream()
+                                    .filter(skill -> skill.rpgClass() == data.rpgClass()).peek(skill ->
+                                            ctx.getSource().sendSuccess(() -> Component.literal(skill.id() + " rank="
+                                                    + data.skillProgress().rank(skill.id()) + "/" + skill.maximumRank()
+                                                    + " availability=" + SkillLearningService.availability(data, skill.id())
+                                                    + (skill.playable() ? "" : " reason=" + skill.unavailableReason())), false))
+                                    .count();
+                            return (int) count;
+                        }))
+                        .then(Commands.literal("upgrade")
+                                .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                    var data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+                                    if (data == null) return 0;
+                                    var result = SkillLearningService.upgrade(data,
+                                            ResourceLocationArgument.getId(ctx, "skill"));
+                                    CommonPacketSync.syncSkillProgress(player, data);
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Skill upgrade: " + result), false);
+                                    return result.success() ? 1 : 0;
+                                })))
+                        .then(Commands.literal("downgrade")
+                                .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                    var data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+                                    if (data == null) return 0;
+                                    var result = SkillLearningService.downgrade(data,
+                                            ResourceLocationArgument.getId(ctx, "skill"));
+                                    CommonPacketSync.syncSkillProgress(player, data);
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Skill downgrade: " + result), false);
+                                    return result.success() ? 1 : 0;
+                                })))
+                        .then(Commands.literal("reset").requires(source -> source.hasPermission(2)).executes(ctx -> {
+                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                            player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
+                                SkillLearningService.reset(data);
+                                CommonPacketSync.syncSkillProgress(player, data);
+                            });
+                            ctx.getSource().sendSuccess(() -> Component.literal("All learned skills reset."), false);
+                            return 1;
+                        })))
                 .then(Commands.literal("status").executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
@@ -243,6 +301,7 @@ public final class CommonEvents {
         player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
             int gained = data.addExperience(reward);
             syncRpg(player, data);
+            if (gained > 0) CommonPacketSync.syncSkillProgress(player, data);
             if (gained > 0) player.displayClientMessage(Component.literal("Level Up! Level " + data.level()), false);
         });
     }
@@ -367,13 +426,17 @@ public final class CommonEvents {
     public static void login(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> syncRpg(player, data));
+            player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> CommonPacketSync.syncSkillProgress(player, data));
             syncCombatState(player);
         }
     }
 
     @SubscribeEvent
     public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) SkillRuntime.cancel(player);
+        if (event.getEntity() instanceof ServerPlayer player) {
+            SkillRuntime.cancel(player);
+            com.zexqm.rpgproject.network.SkillProgressActionPacket.clearReplayState(player);
+        }
     }
 
     @SubscribeEvent

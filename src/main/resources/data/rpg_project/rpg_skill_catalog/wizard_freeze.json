@@ -1,0 +1,34 @@
+{
+  "mcp_id": "wizard_freeze",
+  "name": "Freeze",
+  "description": "Freeze is a combat skill for the Witch and Wizard. Performs a strong chill attack on enemies at close range. The enemies become frozen.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/9.Freeze.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 9
+    },
+    {
+      "rank": 2,
+      "required_level": 15
+    },
+    {
+      "rank": 3,
+      "required_level": 23
+    },
+    {
+      "rank": 4,
+      "required_level": 31
+    },
+    {
+      "rank": 5,
+      "required_level": 40
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

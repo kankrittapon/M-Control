@@ -1,0 +1,26 @@
+{
+  "mcp_id": "wizard_speed_spell",
+  "name": "Speed Spell",
+  "description": "Speed Spell is a combat skill for the Witch and Wizard. Uses magical power for self and friends nearby to raise Attack, Casting and Movement speed.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/25.Speed Spell.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 15
+    },
+    {
+      "rank": 2,
+      "required_level": 32
+    },
+    {
+      "rank": 3,
+      "required_level": 48
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

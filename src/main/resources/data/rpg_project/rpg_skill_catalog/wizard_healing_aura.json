@@ -1,0 +1,34 @@
+{
+  "mcp_id": "wizard_healing_aura",
+  "name": "Healing Aura",
+  "description": "Healing Aura is a combat skill for the Witch and Wizard. Recovers a certain amount of faraway friends' HP.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/18.Healing Aura.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 10
+    },
+    {
+      "rank": 2,
+      "required_level": 19
+    },
+    {
+      "rank": 3,
+      "required_level": 27
+    },
+    {
+      "rank": 4,
+      "required_level": 36
+    },
+    {
+      "rank": 5,
+      "required_level": 45
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

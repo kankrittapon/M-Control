@@ -1,0 +1,34 @@
+{
+  "mcp_id": "wizard_spellbound_heart",
+  "name": "Spellbound Heart",
+  "description": "Spellbound Heart is a combat skill for the Witch and Wizard.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/23.Spellbound Heart.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 20
+    },
+    {
+      "rank": 2,
+      "required_level": 29
+    },
+    {
+      "rank": 3,
+      "required_level": 38
+    },
+    {
+      "rank": 4,
+      "required_level": 47
+    },
+    {
+      "rank": 5,
+      "required_level": 55
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

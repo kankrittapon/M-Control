@@ -1,0 +1,26 @@
+{
+  "mcp_id": "wizard_lightning_storm",
+  "name": "Lightning Storm",
+  "description": "Lightning Storm is a combat skill for the Witch and Wizard. Attacks enemies within range with electricity using magic power.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/13.Lightning Storm.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 23
+    },
+    {
+      "rank": 2,
+      "required_level": 35
+    },
+    {
+      "rank": 3,
+      "required_level": 49
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

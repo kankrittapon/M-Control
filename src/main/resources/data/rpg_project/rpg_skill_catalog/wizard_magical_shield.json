@@ -1,0 +1,30 @@
+{
+  "mcp_id": "wizard_magical_shield",
+  "name": "Magical Shield",
+  "description": "Magical Shield is a combat skill for the Witch and Wizard. Turns a certain amount of the damage the character receives into mana, reducing maximum damage.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/21.Magical Shield.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 11
+    },
+    {
+      "rank": 2,
+      "required_level": 20
+    },
+    {
+      "rank": 3,
+      "required_level": 29
+    },
+    {
+      "rank": 4,
+      "required_level": 40
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

@@ -1,0 +1,26 @@
+{
+  "mcp_id": "wizard_resurrection",
+  "name": "Resurrection",
+  "description": "Resurrection is a combat skill for the Witch and Wizard. Revives friends and partially/completely recovers their HP and MP (WP, SP).",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/20.Resurrection.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 45
+    },
+    {
+      "rank": 2,
+      "required_level": 50
+    },
+    {
+      "rank": 3,
+      "required_level": 54
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

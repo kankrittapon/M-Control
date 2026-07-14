@@ -40,6 +40,8 @@ public final class SkillRuntime {
             return result(player, skillId, SkillCastResult.WRONG_WEAPON, "requirements=" + skill.weapons());
         if (PrimaryResourceType.forClass(data.rpgClass()) != skill.resourceType())
             return result(player, skillId, SkillCastResult.WRONG_RESOURCE, "required=" + skill.resourceType());
+        if (!skill.debugOnly() && data.skillProgress().rank(skillId) <= 0)
+            return result(player, skillId, SkillCastResult.NOT_LEARNED, "rank=0");
         if (data.actionState() == SkillActionState.SHEATHED) {
             if (!validTarget(skill, context))
                 return result(player, skillId, SkillCastResult.INVALID_TARGET, "auto-draw target validation");

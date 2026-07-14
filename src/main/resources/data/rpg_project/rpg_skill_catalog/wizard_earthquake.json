@@ -1,0 +1,30 @@
+{
+  "mcp_id": "wizard_earthquake",
+  "name": "Earthquake",
+  "description": "Earthquake is a combat skill for the Witch and Wizard. Using magical power, causes an earthquake to severely damage nearby enemies.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/16.Earthquake.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 30
+    },
+    {
+      "rank": 2,
+      "required_level": 38
+    },
+    {
+      "rank": 3,
+      "required_level": 45
+    },
+    {
+      "rank": 4,
+      "required_level": 52
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

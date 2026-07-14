@@ -1,0 +1,34 @@
+{
+  "mcp_id": "wizard_protected_area",
+  "name": "Protected Area",
+  "description": "Protected Area is a combat skill for the Witch and Wizard. Creates a huge defense area around teh character where self and friends are protected, dramatically raising their defense.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/22.Protected Area.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 25
+    },
+    {
+      "rank": 2,
+      "required_level": 31
+    },
+    {
+      "rank": 3,
+      "required_level": 38
+    },
+    {
+      "rank": 4,
+      "required_level": 46
+    },
+    {
+      "rank": 5,
+      "required_level": 54
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

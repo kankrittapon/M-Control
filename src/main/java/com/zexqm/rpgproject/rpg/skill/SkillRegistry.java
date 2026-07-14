@@ -23,6 +23,7 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
     public SkillRegistry() { super(new com.google.gson.Gson(), "rpg_skills"); }
     public static SkillDefinition get(ResourceLocation id) { return definitions.get(id); }
     public static Collection<SkillDefinition> all() { return definitions.values(); }
+    static void replaceForTests(Map<ResourceLocation, SkillDefinition> values) { definitions = Map.copyOf(values); }
 
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager manager, ProfilerFiller profiler) {

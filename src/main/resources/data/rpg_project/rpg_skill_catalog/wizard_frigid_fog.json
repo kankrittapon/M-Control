@@ -1,0 +1,30 @@
+{
+  "mcp_id": "wizard_frigid_fog",
+  "name": "Frigid Fog",
+  "description": "Frigid Fog is a combat skill for the Witch and Wizard. Spreads a frigid fog to attack enemies with cold.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/10.Frigid Fog.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 21
+    },
+    {
+      "rank": 2,
+      "required_level": 27
+    },
+    {
+      "rank": 3,
+      "required_level": 34
+    },
+    {
+      "rank": 4,
+      "required_level": 42
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

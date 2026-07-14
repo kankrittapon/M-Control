@@ -1,0 +1,26 @@
+{
+  "mcp_id": "wizard_magic_lighthouse",
+  "name": "Magic Lighthouse",
+  "description": "Magic Lighthouse is a combat skill for the Witch and Wizard. Summons a magical object that attracts enemy attention.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/24.Magic Lighthouse.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 21
+    },
+    {
+      "rank": 2,
+      "required_level": 34
+    },
+    {
+      "rank": 3,
+      "required_level": 49
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

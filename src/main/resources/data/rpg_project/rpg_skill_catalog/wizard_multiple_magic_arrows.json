@@ -1,0 +1,13 @@
+{
+  "mcp_id": "wizard_multiple_magic_arrows",
+  "name": "Multiple Magic Arrows",
+  "description": "Multiple Magic Arrows is a combat skill for the Witch and Wizard. Shoots multiple magic arrows to attack.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/4.Multiple Magic Arrows.png",
+  "playable": false,
+  "unavailable_reason": "MCP ranks_count is 0; rank semantics, SP costs, prerequisites, and combat definition are unresolved",
+  "ranks": [],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

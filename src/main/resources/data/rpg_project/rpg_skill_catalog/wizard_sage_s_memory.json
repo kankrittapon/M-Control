@@ -1,0 +1,13 @@
+{
+  "mcp_id": "wizard_sage_s_memory",
+  "name": "Sage's Memory",
+  "description": "Sage's Memory is a combat skill for the Witch and Wizard. Magically eliminate part of the casting time using old memories.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/26.Sage's Memory.png",
+  "playable": false,
+  "unavailable_reason": "MCP ranks_count is 0; rank semantics, SP costs, prerequisites, and combat definition are unresolved",
+  "ranks": [],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

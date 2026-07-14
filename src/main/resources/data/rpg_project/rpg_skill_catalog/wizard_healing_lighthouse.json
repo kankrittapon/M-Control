@@ -1,0 +1,30 @@
+{
+  "mcp_id": "wizard_healing_lighthouse",
+  "name": "Healing Lighthouse",
+  "description": "Healing Lighthouse is a combat skill for the Witch and Wizard. Uses enormous magical power to recover the HP of self and friends.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/19.Healing Lighthouse.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 27
+    },
+    {
+      "rank": 2,
+      "required_level": 34
+    },
+    {
+      "rank": 3,
+      "required_level": 41
+    },
+    {
+      "rank": 4,
+      "required_level": 48
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

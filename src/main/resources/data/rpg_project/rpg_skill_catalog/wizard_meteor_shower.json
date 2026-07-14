@@ -1,0 +1,26 @@
+{
+  "mcp_id": "wizard_meteor_shower",
+  "name": "Meteor Shower",
+  "description": "Meteor Shower is a combat skill for the Witch and Wizard. Using magical power, drops meteorites drifting in the atmosphere to attack the enemies in a wide area.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/8.Meteor Shower.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 1
+    },
+    {
+      "rank": 2,
+      "required_level": 40
+    },
+    {
+      "rank": 3,
+      "required_level": 50
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

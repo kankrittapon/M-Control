@@ -1,0 +1,34 @@
+{
+  "mcp_id": "wizard_magical_evasion",
+  "name": "Magical Evasion",
+  "description": "Magical Evasion is a combat skill for the Witch and Wizard. The character can dodge quickly in all directions using magical power.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/27.Magical Evasion.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 1
+    },
+    {
+      "rank": 2,
+      "required_level": 11
+    },
+    {
+      "rank": 3,
+      "required_level": 20
+    },
+    {
+      "rank": 4,
+      "required_level": 31
+    },
+    {
+      "rank": 5,
+      "required_level": 40
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

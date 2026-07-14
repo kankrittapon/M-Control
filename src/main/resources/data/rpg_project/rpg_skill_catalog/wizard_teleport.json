@@ -1,0 +1,26 @@
+{
+  "mcp_id": "wizard_teleport",
+  "name": "Teleport",
+  "description": "Teleport is a combat skill for the Witch and Wizard. Instantly teleports within range using magical power.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/28.Teleport.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 13
+    },
+    {
+      "rank": 2,
+      "required_level": 38
+    },
+    {
+      "rank": 3,
+      "required_level": 51
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

@@ -1,0 +1,38 @@
+{
+  "mcp_id": "wizard_infinite_mastery",
+  "name": "Infinite Mastery",
+  "description": "Infinite Mastery is a combat skill for the Witch and Wizard. Only those who reach the limit can acquire stronger body.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/31.Infinite Mastery.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 55
+    },
+    {
+      "rank": 2,
+      "required_level": 56
+    },
+    {
+      "rank": 3,
+      "required_level": 57
+    },
+    {
+      "rank": 4,
+      "required_level": 58
+    },
+    {
+      "rank": 5,
+      "required_level": 59
+    },
+    {
+      "rank": 6,
+      "required_level": 60
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

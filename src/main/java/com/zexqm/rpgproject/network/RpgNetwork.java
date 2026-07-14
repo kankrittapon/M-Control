@@ -37,9 +37,15 @@ public final class RpgNetwork {
         CHANNEL.messageBuilder(SyncSkillStatePacket.class, id++)
                 .encoder(SyncSkillStatePacket::encode).decoder(SyncSkillStatePacket::decode)
                 .consumerMainThread(SyncSkillStatePacket::handle).add();
-        CHANNEL.messageBuilder(SyncEntityStatusesPacket.class, id)
+        CHANNEL.messageBuilder(SyncEntityStatusesPacket.class, id++)
                 .encoder(SyncEntityStatusesPacket::encode).decoder(SyncEntityStatusesPacket::decode)
                 .consumerMainThread(SyncEntityStatusesPacket::handle).add();
+        CHANNEL.messageBuilder(SkillProgressActionPacket.class, id++)
+                .encoder(SkillProgressActionPacket::encode).decoder(SkillProgressActionPacket::decode)
+                .consumerMainThread(SkillProgressActionPacket::handle).add();
+        CHANNEL.messageBuilder(SyncSkillProgressPacket.class, id)
+                .encoder(SyncSkillProgressPacket::encode).decoder(SyncSkillProgressPacket::decode)
+                .consumerMainThread(SyncSkillProgressPacket::handle).add();
     }
 
     private RpgNetwork() {

@@ -1,0 +1,30 @@
+{
+  "mcp_id": "wizard_fireball",
+  "name": "Fireball",
+  "description": "Fireball is a combat skill for the Witch and Wizard. Shoots a powerful fireball to attack enemies.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/6.Fireball.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 3
+    },
+    {
+      "rank": 2,
+      "required_level": 13
+    },
+    {
+      "rank": 3,
+      "required_level": 20
+    },
+    {
+      "rank": 4,
+      "required_level": 30
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}

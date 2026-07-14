@@ -1,0 +1,30 @@
+{
+  "mcp_id": "wizard_blizzard",
+  "name": "Blizzard",
+  "description": "Blizzard is a combat skill for the Witch and Wizard. Causes a powerful blizzard by controlling the climate. Enemies become powerless in front of the blizzard.",
+  "class": "wizard",
+  "tree": "main",
+  "icon": "textures/gui/skills/wizard/main/11.Blizzard.png",
+  "playable": false,
+  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 25
+    },
+    {
+      "rank": 2,
+      "required_level": 35
+    },
+    {
+      "rank": 3,
+      "required_level": 45
+    },
+    {
+      "rank": 4,
+      "required_level": 52
+    }
+  ],
+  "prerequisites": [],
+  "mutually_exclusive": []
+}
