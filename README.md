@@ -210,6 +210,73 @@ Example Wizard test setup:
 /rpg status
 ```
 
+## Development Roadmap
+
+World Core, the generic Skill Runtime, and skill catalog/progression Phases 1-4 are checkpointed.
+The next work proceeds in this order so combat rules remain server-authoritative before UI and
+presentation are added.
+
+### Phase 5: Wizard Combat Batch A
+
+- Approve complete source data for the first eight Wizard Main skills; do not invent missing values.
+- Add rank SP costs, prerequisites, MP cost, cooldown, cast/recovery timing, movement policy, range,
+  targeting shape, hit ticks, and coefficients.
+- Cover projectile/ray, cone, ground AoE, and self AoE through `RpgCombatService`.
+- Use debug particles only. Gate: all eight skills can be learned, ranked, and cast end to end.
+
+### Phase 6: Wizard Combat Batch B
+
+- Add the next eight data-complete skills with multi-hit behavior and Burn, Slow, Freeze, and
+  Defense Down.
+- Verify stacking rules and Normal/Elite/Boss/Unstoppable control profiles.
+- Gate: 16 of 32 Wizard Main entries are playable with regression coverage.
+
+### Phase 7: Wizard Combat Batch C
+
+- Add the next eight skills emphasizing FG, SA, Iframe, interruption, cancel rules, and movement
+  policies.
+- Verify auto-draw/recovery and keep camera orientation independent from body rotation.
+- Gate: 24 of 32 Wizard Main entries are playable.
+
+### Phase 8: Wizard Combat Batch D
+
+- Add the remaining data-complete Wizard Main skills and keep incomplete entries metadata-only.
+- Test rank scaling, cooldown, CC, Status, and interactions across the complete Main tree.
+- Gate: all 32 catalog entries have an explicit playable or safely gated state.
+
+### Phase 9: Functional Skill Tree UI
+
+- Add a rebindable `K` control for the Wizard Main tree.
+- Display rank, level/SP requirements, prerequisites, and learned/available/locked/metadata-only
+  states with placeholder icons where assets are missing.
+- Keep learning transactions server-authoritative. Gate: progression can be managed without commands.
+
+### Phases 10-12: Action Bar And Quick Items
+
+- Create a persistent 20-slot RPG action bar separate from the vanilla inventory hotbar.
+- Bind slots 1-10 to `1-0` and slots 11-20 to `Alt+1-0` while combat is drawn.
+- Restore the vanilla hotbar when combat is sheathed and suppress invalid input during action lock.
+- Add inventory `Ctrl+RMB` quick-item binding with server validation and tag-based compatibility.
+- Gate: learned skills and real inventory consumables survive reconnect and execute exactly once.
+
+### Phases 13-15: GeckoLib And Presentation
+
+- Pin a Forge 1.20.1-compatible GeckoLib version and add draw, cast, hit, recovery, cancel, and
+  sheathe animation events without moving combat timing away from the server.
+- Integrate Blockbench Staff, Dagger, Wizard, and weapon animations after event fallback is stable.
+- Present global CC/Status on vanilla, GeckoLib, and unknown modded mobs; missing clips must fall
+  back to particles/tint and movement lock without errors.
+- Gate: multiplayer observes the same logical timeline even when an entity has no custom animation.
+
+### Phase 16: Wizard Main Acceptance
+
+- Test levels 1-100, independent Skill EXP/SP farming, learning/reset, and rank scaling.
+- Test the 20-slot action bar, consumables, action-camera/cursor modes, and every mob control profile.
+- Verify singleplayer and dedicated multiplayer, then make structured debug logging configurable.
+- Gate: every data-complete Wizard Main skill works end to end and incomplete skills remain gated.
+
+Succession, Awakening, Ninja, final assets, and balance work begin only after this acceptance gate.
+
 ## Not Implemented Yet
 
 - Equipment screen for the three RPG weapon slots.
