@@ -5,6 +5,7 @@ import com.zexqm.rpgproject.RpgProject;
 import com.zexqm.rpgproject.mana.ClientMana;
 import com.zexqm.rpgproject.network.RpgNetwork;
 import com.zexqm.rpgproject.network.ToggleCombatPacket;
+import com.zexqm.rpgproject.rpg.skill.MovementPolicy;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -90,6 +91,15 @@ public final class ClientEvents {
 
         ClientControlState.tick(minecraft);
         ClientTargeting.tick(minecraft);
+        ClientCombatState.tick();
+
+        if (ClientCombatState.actionLocked()) {
+            ClientControlState.cancelAutoMove();
+            minecraft.options.keyAttack.setDown(false);
+            minecraft.options.keyUse.setDown(false);
+            minecraft.options.keyJump.setDown(false);
+            return;
+        }
 
         while (TOGGLE_COMBAT.consumeClick()) RpgNetwork.CHANNEL.sendToServer(new ToggleCombatPacket());
 
@@ -164,6 +174,24 @@ public final class ClientEvents {
 
     @SubscribeEvent
     public static void onMovementInput(MovementInputUpdateEvent event) {
+        MovementPolicy skillMovement = ClientSkillState.movement();
+        if (ClientCombatState.actionLocked() || skillMovement == MovementPolicy.LOCKED
+                || skillMovement == MovementPolicy.ROTATE_ONLY) {
+            ClientControlState.cancelAutoMove();
+            event.getInput().up = false;
+            event.getInput().down = false;
+            event.getInput().left = false;
+            event.getInput().right = false;
+            event.getInput().jumping = false;
+            event.getInput().forwardImpulse = 0.0F;
+            event.getInput().leftImpulse = 0.0F;
+            return;
+        }
+        if (skillMovement == MovementPolicy.WALK) {
+            ClientControlState.cancelAutoMove();
+            event.getInput().forwardImpulse *= 0.5F;
+            event.getInput().leftImpulse *= 0.5F;
+        }
         if (ClientControlState.isAutoMoving()) {
             event.getInput().up = true;
             event.getInput().down = false;

@@ -1,0 +1,1 @@
+{"debug_only":true,"class":"wizard","targeting":"entity_targeted","weapons":{"main":true,"sub":true},"resource_type":"mp","resource_cost":4,"cooldown_ticks":10,"cast_ticks":3,"recovery_ticks":3,"movement_policy":"rotate_only","range":12,"hits":[{"timing_tick":3,"base_damage":4,"coefficient":0.5,"power_type":"magic","crowd_control":"stun"}]}

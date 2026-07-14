@@ -25,9 +25,21 @@ public final class RpgNetwork {
         CHANNEL.messageBuilder(SyncRpgDataPacket.class, id++)
                 .encoder(SyncRpgDataPacket::encode).decoder(SyncRpgDataPacket::decode)
                 .consumerMainThread(SyncRpgDataPacket::handle).add();
-        CHANNEL.messageBuilder(ToggleCombatPacket.class, id)
+        CHANNEL.messageBuilder(ToggleCombatPacket.class, id++)
                 .encoder(ToggleCombatPacket::encode).decoder(ToggleCombatPacket::decode)
                 .consumerMainThread(ToggleCombatPacket::handle).add();
+        CHANNEL.messageBuilder(SyncCombatStatePacket.class, id++)
+                .encoder(SyncCombatStatePacket::encode).decoder(SyncCombatStatePacket::decode)
+                .consumerMainThread(SyncCombatStatePacket::handle).add();
+        CHANNEL.messageBuilder(CastSkillRequestPacket.class, id++)
+                .encoder(CastSkillRequestPacket::encode).decoder(CastSkillRequestPacket::decode)
+                .consumerMainThread(CastSkillRequestPacket::handle).add();
+        CHANNEL.messageBuilder(SyncSkillStatePacket.class, id++)
+                .encoder(SyncSkillStatePacket::encode).decoder(SyncSkillStatePacket::decode)
+                .consumerMainThread(SyncSkillStatePacket::handle).add();
+        CHANNEL.messageBuilder(SyncEntityStatusesPacket.class, id)
+                .encoder(SyncEntityStatusesPacket::encode).decoder(SyncEntityStatusesPacket::decode)
+                .consumerMainThread(SyncEntityStatusesPacket::handle).add();
     }
 
     private RpgNetwork() {

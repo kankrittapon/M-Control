@@ -1,0 +1,1 @@
+{"debug_only":true,"class":"wizard","targeting":"circle","weapons":{"main":true,"sub":true},"resource_type":"mp","resource_cost":3,"cooldown_ticks":8,"cast_ticks":2,"recovery_ticks":2,"movement_policy":"full","range":8,"radius":2.5,"hits":[{"timing_tick":2,"base_damage":2,"coefficient":0.3,"radius":2.5,"power_type":"magic"}]}

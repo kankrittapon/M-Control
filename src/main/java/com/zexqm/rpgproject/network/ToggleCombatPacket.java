@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import java.util.function.Supplier;
+import com.zexqm.rpgproject.rpg.skill.SkillRuntimeConfig;
 
 public final class ToggleCombatPacket {
     public static void encode(ToggleCombatPacket p, FriendlyByteBuf b) {}
@@ -17,7 +18,9 @@ public final class ToggleCombatPacket {
             ServerPlayer player = c.getSender();
             if (player == null) return;
             player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
-                if (!data.toggleDraw()) player.displayClientMessage(Component.literal("Equip the correct Main and Sub weapons first."), true);
+                var timing = SkillRuntimeConfig.values();
+                if (!data.requestToggleDraw(timing.drawTicks(), timing.sheatheTicks()))
+                    player.displayClientMessage(Component.literal("Cannot change combat stance in the current state or required weapons are missing."), true);
                 RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncRpgDataPacket(
                         data.weaponDrawn(), data.inCombat(), data.level(), data.experience(),
                         data.requiredExperience(), data.availableSkillPoints(), data.stamina(), data.maxStamina(),

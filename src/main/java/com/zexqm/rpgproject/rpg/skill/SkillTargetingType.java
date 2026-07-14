@@ -1,3 +1,13 @@
 package com.zexqm.rpgproject.rpg.skill;
 
-public enum SkillTargetingType { SELF_AOE, GROUND_AOE, DIRECTIONAL_AOE, PROJECTILE, ENTITY_TARGETED, MOVEMENT }
+public enum SkillTargetingType {
+    AIM_PROJECTILE,
+    RAY,
+    CONE,
+    LINE,
+    CIRCLE,
+    SELF_AOE,
+    GROUND_AOE,
+    ENTITY_TARGETED,
+    MOVEMENT
+}

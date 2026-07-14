@@ -58,10 +58,28 @@ sourceSets.main.resources {
 }
 
 repositories {
+    mavenCentral()
 }
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.3.0'
+    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
+tasks.configureEach {
+    if (name == 'runGameTestServer') {
+        doFirst {
+            copy {
+                from 'src/gametest/resources'
+                into 'run/gameteststructures'
+            }
+        }
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {

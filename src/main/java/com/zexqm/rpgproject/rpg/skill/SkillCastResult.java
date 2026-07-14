@@ -1,0 +1,16 @@
+package com.zexqm.rpgproject.rpg.skill;
+
+public enum SkillCastResult {
+    STARTED,
+    UNKNOWN_SKILL,
+    DEBUG_FORBIDDEN,
+    INVALID_STATE,
+    WRONG_CLASS,
+    WRONG_SPECIALIZATION,
+    WRONG_WEAPON,
+    WRONG_RESOURCE,
+    INSUFFICIENT_RESOURCE,
+    COOLDOWN,
+    INVALID_AIM,
+    INVALID_TARGET
+}

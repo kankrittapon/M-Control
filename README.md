@@ -71,12 +71,23 @@ Class-specific skills, models, and animations are intentionally deferred until t
 
 ### Protection And Crowd Control Core
 
-- Front Guard protects a 180-degree frontal arc and consumes Guard Gauge.
-- Side and rear damage bypass Front Guard.
-- Iframe cancels eligible incoming damage.
-- Super Armor, Grab Immunity, and shared CC resolution contracts are available to future skills.
+- Every living entity has transient server-authoritative combat state.
+- Front Guard protects a configurable 180-degree frontal arc and consumes Guard Gauge.
+- Side and rear damage bypass Front Guard; Iframe cancels damage and Crowd Control.
+- Super Armor blocks Crowd Control while damage still applies; Grab Immunity remains a skill contract.
 - CC types include stiffness, stun, freeze, knockback, knockdown, bound, float, and grab.
-- Protection states are server-authoritative and tick-based.
+- Non-grab CC uses a configurable 2.0-point budget followed by 100 ticks of immunity.
+- CC applies movement/action locks, floating and knockback velocity, down/air states, and freeze immunity.
+- Local input and mob navigation are suppressed while the server reports an action lock.
+
+### Tagged RPG Damage
+
+- `RpgCombatService` resolves explicit RPG damage contexts exactly once.
+- The order is Iframe/Freeze, Accuracy/Evasion, AP or Magic scaling, Critical, stacking special
+  attacks, Front Guard, Damage Reduction, health damage, then Crowd Control.
+- Back, Down, Air, Speed, and Counter Attack states use data-driven multipliers.
+- Vanilla and environmental damage do not receive RPG stat scaling; eligible direct attacks can
+  still be stopped by Iframe or Front Guard.
 
 ### Mob Level And World Scaling
 
@@ -87,11 +98,18 @@ Class-specific skills, models, and animations are intentionally deferred until t
 - Saved mobs do not receive duplicate scaling modifiers when reloaded.
 - EXP rewards use the mob's resulting Max Health.
 
-### Generic Skill Contract
+### Skill Runtime And Mob Compatibility
 
-The project contains only reusable skill definitions, not playable class skills. The contract supports
-targeting type, class and specialization requirements, weapon requirements, mana/stamina costs,
-cooldown, cast/recovery time, range, radius, and damage coefficient.
+- Server-authoritative action states: Sheathed, Drawing, Ready, Casting, Recovery, and Sheathing.
+- Skill requests validate class, specialization, weapon set, MP/WP, stamina, cooldown, range, and target.
+- Casting a skill while sheathed queues it through the logical Draw transition without spending early.
+- Datapack skills support projectile, ray, cone, line, circle, self/ground AoE, entity-targeted,
+  movement, multi-hit timing, movement policies, protection windows, CC, and Status payloads.
+- MP and WP share one resource runtime while remaining class-specific; stamina stays separate.
+- Mob profiles resolve as Normal, Elite, Boss, or Unstoppable. Unknown modded entities default to Normal.
+- Boss and Elite compatibility is extendable through entity-type tags without Java changes.
+- Burn, Slow, and Defense Down are transient Status effects with refresh, stronger-replace, or stacking rules.
+- Debug-only datapack skills exercise every runtime path; production Wizard/Ninja skills are still deferred.
 
 ## Controls
 
@@ -114,6 +132,10 @@ Class growth profiles are loaded from:
 ```text
 src/main/resources/data/rpg_project/rpg_classes/wizard.json
 src/main/resources/data/rpg_project/rpg_classes/ninja.json
+src/main/resources/data/rpg_project/rpg_world_core/combat.json
+src/main/resources/data/rpg_project/rpg_world_core/skill_runtime.json
+src/main/resources/data/rpg_project/rpg_skills/debug_*.json
+src/main/resources/data/rpg_project/tags/entity_types/control/*.json
 ```
 
 Run `/reload` after changing a profile. Invalid or missing profiles fall back to Java defaults.
@@ -133,7 +155,14 @@ Run `/reload` after changing a profile. Invalid or missing profiles fall back to
 /rpg protection sa 200
 /rpg protection iframe 100
 /rpg protection grab_immune 200
+/rpg debug cc @e[type=zombie,limit=1] stun
+/rpg debug hit @e[type=zombie,limit=1] 20
+/rpg debug cast rpg_project:debug_ray
+/rpg debug cast rpg_project:debug_cone
+/rpg debug cast rpg_project:debug_ground
 ```
+
+Protection and debug mutation commands require operator permission level 2.
 
 `/rpg equip` equips the RPG weapon currently held in the main hand into its logical slot.
 
@@ -162,6 +191,8 @@ Example Wizard test setup:
 ## Build And Run
 
 ```powershell
+.\gradlew.bat test
 .\gradlew.bat build
+.\gradlew.bat runGameTestServer
 .\gradlew.bat runClient
 ```

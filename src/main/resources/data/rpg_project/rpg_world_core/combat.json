@@ -1,0 +1,39 @@
+{
+  "damage": {
+    "power_scale": 0.1,
+    "minimum_hit_chance": 0.1,
+    "maximum_hit_chance": 0.95,
+    "maximum_damage_reduction": 0.8
+  },
+  "protection": {
+    "frontal_guard_arc_degrees": 180.0,
+    "guard_damage_scale": 1.0,
+    "guard_regen_per_tick": 0.5
+  },
+  "crowd_control": {
+    "maximum_points": 2.0,
+    "immunity_ticks": 100,
+    "chain_reset_ticks": 100,
+    "stiffness_points": 0.7,
+    "standard_points": 1.0,
+    "floating_velocity": 0.8,
+    "knockback_velocity": 0.6,
+    "durations": {
+      "stiffness": 20,
+      "stun": 40,
+      "knockdown": 40,
+      "floating": 20,
+      "bound": 40,
+      "knockback": 10,
+      "freezing": 40
+    }
+  },
+  "special_damage": {
+    "rear_attack_arc_degrees": 120.0,
+    "back_attack": 1.2,
+    "down_attack": 1.2,
+    "air_attack": 1.7,
+    "speed_attack": 1.2,
+    "counter_attack": 1.7
+  }
+}

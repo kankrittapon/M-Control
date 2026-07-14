@@ -2,6 +2,11 @@ package com.zexqm.rpgproject.rpg;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.ResourceLocation;
+import com.zexqm.rpgproject.rpg.skill.SkillActionState;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class RpgPlayerData {
     public static final int COMBAT_TIMEOUT_TICKS = 200;
@@ -11,6 +16,9 @@ public class RpgPlayerData {
     private final ItemStack[] weapons = {ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY};
     private boolean weaponDrawn;
     private int combatTicks;
+    private SkillActionState actionState = SkillActionState.SHEATHED;
+    private int actionTicks;
+    private final Map<ResourceLocation, Long> cooldowns = new HashMap<>();
     private int level = LevelCurve.MIN_LEVEL;
     private long experience;
     private int totalSkillPoints;
@@ -23,13 +31,14 @@ public class RpgPlayerData {
     private double breathDistance;
     private double strengthDistance;
     private double healedHealth;
-    private final ProtectionState protection = new ProtectionState();
 
     public RpgClass rpgClass() { return rpgClass; }
     public Specialization specialization() { return specialization; }
     public WeaponSet activeSet() { return activeSet; }
     public boolean weaponDrawn() { return weaponDrawn; }
     public boolean inCombat() { return weaponDrawn && combatTicks > 0; }
+    public SkillActionState actionState() { return actionState; }
+    public int actionTicks() { return actionTicks; }
     public ItemStack weapon(WeaponSlot slot) { return weapons[slot.ordinal()]; }
     public int level() { return level; }
     public long experience() { return experience; }
@@ -43,7 +52,6 @@ public class RpgPlayerData {
     public TrainingProgress healthTraining() { return healthTraining; }
     public double stamina() { return stamina; }
     public double maxStamina() { return 100.0 + breath.level() * 5.0; }
-    public ProtectionState protection() { return protection; }
     public boolean exhausted() { return stamina < 1.0; }
 
     public void tickStamina(boolean sprinting) {
@@ -132,25 +140,59 @@ public class RpgPlayerData {
                 && weapon.rpgClass() == rpgClass && weapon.slot() == slot;
     }
 
-    public boolean toggleDraw() {
-        if (weaponDrawn) { sheathe(); return true; }
+    public boolean requestToggleDraw(int drawTicks, int sheatheTicks) {
+        if (actionState == SkillActionState.CASTING || actionState == SkillActionState.RECOVERY) return false;
+        if (weaponDrawn || actionState == SkillActionState.READY) {
+            actionState = SkillActionState.SHEATHING;
+            actionTicks = Math.max(1, sheatheTicks);
+            return true;
+        }
         if (!canDraw()) return false;
+        actionState = SkillActionState.DRAWING;
+        actionTicks = Math.max(1, drawTicks);
+        return true;
+    }
+    public void startCast(int ticks) {
+        actionState = SkillActionState.CASTING;
+        actionTicks = Math.max(0, ticks);
         weaponDrawn = true;
-        combatTicks = COMBAT_TIMEOUT_TICKS;
-        return true;
-    }
-    public boolean drawForSkill() {
-        if (!weaponDrawn && !toggleDraw()) return false;
         touchCombat();
-        return true;
     }
+    public void startRecovery(int ticks) {
+        actionState = SkillActionState.RECOVERY;
+        actionTicks = Math.max(0, ticks);
+    }
+    public void finishRecovery() {
+        actionState = SkillActionState.READY;
+        actionTicks = 0;
+        weaponDrawn = true;
+    }
+    public void cancelAction() {
+        if (weaponDrawn) finishRecovery(); else sheathe();
+    }
+    public boolean cooldownReady(ResourceLocation skill, long gameTime) { return cooldowns.getOrDefault(skill, 0L) <= gameTime; }
+    public long cooldownRemaining(ResourceLocation skill, long gameTime) {
+        return Math.max(0L, cooldowns.getOrDefault(skill, 0L) - gameTime);
+    }
+    public void startCooldown(ResourceLocation skill, long expiration) { cooldowns.put(skill, expiration); }
+    public Map<ResourceLocation, Long> cooldowns() { return Map.copyOf(cooldowns); }
     public void touchCombat() { if (weaponDrawn) combatTicks = COMBAT_TIMEOUT_TICKS; }
     public boolean tick() {
-        protection.tick(inCombat());
-        if (combatTicks > 0 && --combatTicks == 0) { weaponDrawn = false; return true; }
+        if (actionTicks > 0) actionTicks--;
+        if (actionTicks == 0 && actionState == SkillActionState.DRAWING) {
+            weaponDrawn = true;
+            actionState = SkillActionState.READY;
+            combatTicks = COMBAT_TIMEOUT_TICKS;
+            return true;
+        }
+        if (actionTicks == 0 && actionState == SkillActionState.SHEATHING) {
+            sheathe();
+            return true;
+        }
+        if (combatTicks > 0 && --combatTicks == 0) { sheathe(); return true; }
         return false;
     }
-    public void sheathe() { weaponDrawn = false; combatTicks = 0; }
+    public void sheathe() { weaponDrawn = false; combatTicks = 0; actionState = SkillActionState.SHEATHED; actionTicks = 0; }
 
     public CompoundTag save() {
         CompoundTag tag = new CompoundTag();
@@ -165,6 +207,9 @@ public class RpgPlayerData {
         tag.put("Strength", strength.save());
         tag.put("HealthTraining", healthTraining.save());
         tag.putDouble("Stamina", stamina);
+        CompoundTag cooldownTag = new CompoundTag();
+        cooldowns.forEach((id, expiration) -> cooldownTag.putLong(id.toString(), expiration));
+        tag.put("SkillCooldowns", cooldownTag);
         for (WeaponSlot slot : WeaponSlot.values()) tag.put("Weapon_" + slot.name(), weapon(slot).save(new CompoundTag()));
         return tag;
     }
@@ -180,6 +225,12 @@ public class RpgPlayerData {
         if (tag.contains("Strength")) strength.load(tag.getCompound("Strength"));
         if (tag.contains("HealthTraining")) healthTraining.load(tag.getCompound("HealthTraining"));
         stamina = tag.contains("Stamina") ? Math.max(0, Math.min(maxStamina(), tag.getDouble("Stamina"))) : maxStamina();
+        cooldowns.clear();
+        CompoundTag cooldownTag = tag.getCompound("SkillCooldowns");
+        for (String key : cooldownTag.getAllKeys()) {
+            ResourceLocation id = ResourceLocation.tryParse(key);
+            if (id != null) cooldowns.put(id, Math.max(0L, cooldownTag.getLong(key)));
+        }
         for (WeaponSlot slot : WeaponSlot.values()) weapons[slot.ordinal()] = ItemStack.of(tag.getCompound("Weapon_" + slot.name()));
         if (specialization == Specialization.SUCCESSION) activeSet = WeaponSet.MAIN;
         sheathe();
