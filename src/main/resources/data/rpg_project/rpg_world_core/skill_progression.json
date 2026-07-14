@@ -1,0 +1,8 @@
+{
+  "base_xp_per_point": 100,
+  "xp_growth_per_point": 2,
+  "max_xp_per_point": 1000,
+  "mob_reward_base": 5,
+  "mob_level_multiplier": 2.0,
+  "mob_health_multiplier": 0.5
+}

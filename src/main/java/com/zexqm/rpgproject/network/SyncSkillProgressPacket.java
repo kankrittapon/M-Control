@@ -12,7 +12,8 @@ import java.util.function.Supplier;
 
 public record SyncSkillProgressPacket(Map<ResourceLocation, Integer> learnedRanks,
                                       Map<ResourceLocation, SkillAvailability> availability,
-                                      int availableSkillPoints) {
+                                      int totalSkillPoints, int spentSkillPoints,
+                                      long skillExperience, long requiredSkillExperience) {
     public static void encode(SyncSkillProgressPacket packet, FriendlyByteBuf buffer) {
         buffer.writeVarInt(packet.learnedRanks.size());
         packet.learnedRanks.forEach((id, rank) -> {
@@ -24,7 +25,10 @@ public record SyncSkillProgressPacket(Map<ResourceLocation, Integer> learnedRank
             buffer.writeResourceLocation(id);
             buffer.writeEnum(value);
         });
-        buffer.writeVarInt(packet.availableSkillPoints);
+        buffer.writeVarInt(packet.totalSkillPoints);
+        buffer.writeVarInt(packet.spentSkillPoints);
+        buffer.writeVarLong(packet.skillExperience);
+        buffer.writeVarLong(packet.requiredSkillExperience);
     }
 
     public static SyncSkillProgressPacket decode(FriendlyByteBuf buffer) {
@@ -38,13 +42,15 @@ public record SyncSkillProgressPacket(Map<ResourceLocation, Integer> learnedRank
         Map<ResourceLocation, SkillAvailability> availability = new HashMap<>();
         for (int index = 0; index < availabilitySize; index++)
             availability.put(buffer.readResourceLocation(), buffer.readEnum(SkillAvailability.class));
-        return new SyncSkillProgressPacket(Map.copyOf(ranks), Map.copyOf(availability), buffer.readVarInt());
+        return new SyncSkillProgressPacket(Map.copyOf(ranks), Map.copyOf(availability),
+                buffer.readVarInt(), buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong());
     }
 
     public static void handle(SyncSkillProgressPacket packet, Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> ClientSkillProgress.apply(packet.learnedRanks, packet.availability,
-                packet.availableSkillPoints));
+                packet.totalSkillPoints, packet.spentSkillPoints, packet.skillExperience,
+                packet.requiredSkillExperience));
         context.setPacketHandled(true);
     }
 }

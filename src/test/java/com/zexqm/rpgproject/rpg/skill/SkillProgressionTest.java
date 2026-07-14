@@ -53,6 +53,7 @@ class SkillProgressionTest {
         SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
         RpgPlayerData data = new RpgPlayerData();
         data.setLevel(10);
+        assertEquals(2, data.addSkillExperience(202));
         int initial = data.availableSkillPoints();
         assertTrue(SkillLearningService.upgrade(data, ID).success());
         assertEquals(1, data.skillProgress().rank(ID));
@@ -72,6 +73,7 @@ class SkillProgressionTest {
         SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
         RpgPlayerData original = new RpgPlayerData();
         original.setLevel(10);
+        assertEquals(2, original.addSkillExperience(202));
         assertTrue(SkillLearningService.upgrade(original, ID).success());
 
         RpgPlayerData deathClone = new RpgPlayerData();
@@ -90,21 +92,31 @@ class SkillProgressionTest {
     }
 
     @Test
-    void debugLevelChangesCannotDuplicateSkillPoints() {
+    void characterLevelAndSkillPointProgressionAreIndependent() {
         RpgPlayerData data = new RpgPlayerData();
-        assertTrue(data.setLevel(50));
-        assertEquals(49, data.availableSkillPoints());
-        assertTrue(data.setLevel(1));
+        data.setLevel(50);
         assertEquals(0, data.availableSkillPoints());
+        assertEquals(0, data.addSkillExperience(99));
+        assertEquals(0, data.availableSkillPoints());
+        assertEquals(1, data.addSkillExperience(1));
+        assertEquals(1, data.availableSkillPoints());
+
+        data.setLevel(1);
+        assertEquals(1, data.availableSkillPoints());
         assertEquals(18, data.addExperience(100_000));
-        assertEquals(18, data.availableSkillPoints());
+        assertEquals(1, data.availableSkillPoints());
+        assertEquals(19, data.level());
+
+        assertEquals(1, data.addSkillExperience(102));
+        assertEquals(2, data.availableSkillPoints());
 
         SkillCatalog.replaceForTests(Map.of(ID, entry(true)));
         SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
         assertTrue(SkillLearningService.upgrade(data, ID).success());
-        assertFalse(data.setLevel(1));
-        assertEquals(19, data.level());
+        data.setLevel(1);
+        assertEquals(1, data.level());
         assertEquals(1, data.skillProgress().rank(ID));
+        assertEquals(0, data.availableSkillPoints());
     }
 
     @Test

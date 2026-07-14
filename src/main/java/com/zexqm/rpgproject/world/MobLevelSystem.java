@@ -45,5 +45,8 @@ public final class MobLevelSystem {
         if (attribute == null || attribute.getModifier(id) != null) return;
         attribute.addPermanentModifier(new AttributeModifier(id, name, amount, AttributeModifier.Operation.MULTIPLY_BASE));
     }
+    public static int level(Entity entity) {
+        return Math.max(1, entity.getPersistentData().getInt(LEVEL_TAG));
+    }
     private MobLevelSystem() {}
 }

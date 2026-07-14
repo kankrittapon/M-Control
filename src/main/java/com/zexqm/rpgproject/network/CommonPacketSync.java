@@ -14,7 +14,8 @@ public final class CommonPacketSync {
                 SkillLearningService.availability(data, skill.id())));
         RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new SyncSkillProgressPacket(data.skillProgress().learnedRanks(), availability,
-                        data.availableSkillPoints()));
+                        data.totalSkillPoints(), data.spentSkillPoints(), data.skillExperience(),
+                        data.requiredSkillExperience()));
     }
 
     private CommonPacketSync() {}

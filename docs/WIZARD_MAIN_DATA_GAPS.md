@@ -16,6 +16,8 @@ All 32 entries still need approved Skill Point cost per rank, prerequisite/exclu
 weapon requirements, targeting shape, MP cost, cooldown, cast/recovery timing, movement/cancel
 policy, hit ticks, coefficients, range/radius, protection windows, CC, Status, and special-attack
 eligibility. MCP rank `cost` is treated as a casting resource value, not Skill Point cost.
+Skill Point costs should be balanced against the independent mob-grind progression in
+`rpg_world_core/skill_progression.json`, not against Character Level.
 
 ## Source Issues
 

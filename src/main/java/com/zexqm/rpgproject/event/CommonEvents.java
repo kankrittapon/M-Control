@@ -49,6 +49,7 @@ import com.zexqm.rpgproject.network.SyncCombatStatePacket;
 import com.zexqm.rpgproject.network.SyncSkillStatePacket;
 import com.zexqm.rpgproject.network.SyncEntityStatusesPacket;
 import com.zexqm.rpgproject.rpg.skill.SkillRuntimeConfig;
+import com.zexqm.rpgproject.rpg.skill.SkillProgressionConfig;
 import com.zexqm.rpgproject.rpg.skill.SkillRegistry;
 import com.zexqm.rpgproject.rpg.skill.SkillCatalog;
 import com.zexqm.rpgproject.rpg.skill.SkillLearningService;
@@ -71,6 +72,7 @@ public final class CommonEvents {
         event.addListener(new ClassProfileManager());
         event.addListener(new CombatConfig());
         event.addListener(new SkillRuntimeConfig());
+        event.addListener(new SkillProgressionConfig());
         event.addListener(new SkillCatalog());
         event.addListener(new SkillRegistry());
     }
@@ -142,16 +144,25 @@ public final class CommonEvents {
                     RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
                     if (data == null) return 0;
                     int level = IntegerArgumentType.getInteger(ctx, "level");
-                    if (!data.setLevel(level)) {
-                        ctx.getSource().sendFailure(Component.literal(
-                                "Cannot lower to level " + level + ": reset learned skills first (spent SP="
-                                        + data.spentSkillPoints() + ")"));
-                        return 0;
-                    }
+                    data.setLevel(level);
                     syncRpg(player, data);
                     CommonPacketSync.syncSkillProgress(player, data);
                     return 1;
                 })))
+                .then(Commands.literal("addskillxp").requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("amount", LongArgumentType.longArg(1)).executes(ctx -> {
+                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                            RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+                            if (data == null) return 0;
+                            long amount = LongArgumentType.getLong(ctx, "amount");
+                            int gained = data.addSkillExperience(amount);
+                            syncRpg(player, data);
+                            CommonPacketSync.syncSkillProgress(player, data);
+                            ctx.getSource().sendSuccess(() -> Component.literal("Skill EXP +" + amount
+                                    + " SP gained=" + gained + " progress=" + data.skillExperience() + "/"
+                                    + data.requiredSkillExperience()), false);
+                            return 1;
+                        })))
                 .then(Commands.literal("protection").requires(source -> source.hasPermission(2))
                         .then(Commands.argument("type", StringArgumentType.word())
                                 .then(Commands.argument("ticks", IntegerArgumentType.integer(1, 1200)).executes(ctx -> {
@@ -281,7 +292,9 @@ public final class CommonEvents {
                         DerivedStats stats = data.stats();
                         player.displayClientMessage(Component.literal("Class=" + data.rpgClass() + " Spec=" + data.specialization()
                                 + " Lv=" + data.level() + " EXP=" + data.experience() + "/" + data.requiredExperience()
-                                + " SP=" + data.availableSkillPoints() + " Drawn=" + data.weaponDrawn()
+                                + " SP=" + data.availableSkillPoints() + " (total=" + data.totalSkillPoints()
+                                + " spent=" + data.spentSkillPoints() + ") SkillEXP=" + data.skillExperience()
+                                + "/" + data.requiredSkillExperience() + " Drawn=" + data.weaponDrawn()
                                 + " Action=" + data.actionState() + " Resource="
                                 + PrimaryResourceType.forClass(data.rpgClass()) + " Cooldowns="
                                 + data.cooldowns().size() + " Ready=" + data.canDraw()), false);
@@ -312,9 +325,18 @@ public final class CommonEvents {
         long reward = Math.max(10L, Math.round(event.getEntity().getMaxHealth() * 5.0));
         player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
             int gained = data.addExperience(reward);
+            int mobLevel = com.zexqm.rpgproject.world.MobLevelSystem.level(event.getEntity());
+            long skillReward = SkillProgressionConfig.values().mobReward(mobLevel,
+                    event.getEntity().getMaxHealth());
+            int skillPointsGained = data.addSkillExperience(skillReward);
             syncRpg(player, data);
-            if (gained > 0) CommonPacketSync.syncSkillProgress(player, data);
+            CommonPacketSync.syncSkillProgress(player, data);
             if (gained > 0) player.displayClientMessage(Component.literal("Level Up! Level " + data.level()), false);
+            if (skillPointsGained > 0) player.displayClientMessage(Component.literal(
+                    "Skill Point +" + skillPointsGained), true);
+            RpgProject.LOGGER.info("[RPG Progression] player={} target={} characterXp={} skillXp={} spGained={}",
+                    player.getScoreboardName(), event.getEntity().getType().toShortString(), reward,
+                    skillReward, skillPointsGained);
         });
     }
     @SubscribeEvent

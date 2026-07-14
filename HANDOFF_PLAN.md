@@ -68,7 +68,8 @@ The following systems exist and should be extended instead of replaced:
 - Selected target, click-to-move, move-to-entity, and auto-attack foundations.
 - Wizard and Ninja class identity plus Succession/Awakening state.
 - Logical Main/Sub/Awakening equipment slots and server validation.
-- Levels 1-100, EXP, Skill Points, persistence, and death/dimension cloning.
+- Levels 1-100 and independent combat-earned Skill EXP/Skill Points, with persistence and
+  death/dimension cloning. Character Level gates ranks but does not award Skill Points.
 - Data-driven class base stats and per-level growth JSON.
 - Runtime attribute bridge and server damage pipeline.
 - Breath, Strength, Health training; stamina and carrying weight.

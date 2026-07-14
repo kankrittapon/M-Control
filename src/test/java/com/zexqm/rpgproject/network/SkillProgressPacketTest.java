@@ -19,7 +19,7 @@ class SkillProgressPacketTest {
         FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         try {
             SyncSkillProgressPacket original = new SyncSkillProgressPacket(Map.of(SKILL, 2),
-                    Map.of(SKILL, SkillAvailability.MAX_RANK), 17);
+                    Map.of(SKILL, SkillAvailability.MAX_RANK), 25, 8, 440, 600);
             SyncSkillProgressPacket.encode(original, buffer);
             assertEquals(original, SyncSkillProgressPacket.decode(buffer));
         } finally {

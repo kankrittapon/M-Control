@@ -41,8 +41,11 @@ Playable class skills, models, and animations are intentionally deferred until t
 
 - Character levels 1-100.
 - Persistent EXP with overflow across multiple level-ups.
-- One Skill Point per level gained.
-- Separate total, spent, and available Skill Point values.
+- Character Level and Skill Points are independent progression tracks.
+- Level gates skill ranks; combat Skill EXP from defeating mobs earns Skill Points.
+- Skill EXP requirements grow per earned point up to a configurable cap, supporting long-term
+  progression with thousands of total Skill Points.
+- Separate total, spent, available Skill Points, and partial Skill EXP are persistent.
 - EXP rewards from killing living entities.
 - Player data persists through save/load, death, respawn, and dimension changes.
 - Wizard and Ninja have different health, mana, offense, defense, accuracy, and evasion growth.
@@ -145,6 +148,7 @@ src/main/resources/data/rpg_project/rpg_classes/wizard.json
 src/main/resources/data/rpg_project/rpg_classes/ninja.json
 src/main/resources/data/rpg_project/rpg_world_core/combat.json
 src/main/resources/data/rpg_project/rpg_world_core/skill_runtime.json
+src/main/resources/data/rpg_project/rpg_world_core/skill_progression.json
 src/main/resources/data/rpg_project/rpg_skills/debug_*.json
 src/main/resources/data/rpg_project/rpg_skill_catalog/wizard_*.json
 src/main/resources/data/rpg_project/tags/entity_types/control/*.json
@@ -162,6 +166,7 @@ Run `/reload` after changing a profile. Invalid or missing profiles fall back to
 /rpg equip
 /rpg status
 /rpg addxp 1000
+/rpg addskillxp 1000
 /rpg setlevel 50
 /rpg protection fg 200
 /rpg protection sa 200
@@ -181,6 +186,9 @@ Run `/reload` after changing a profile. Invalid or missing profiles fall back to
 ```
 
 Protection and debug mutation commands require operator permission level 2.
+
+`/rpg addxp` changes Character EXP only. `/rpg addskillxp` changes Skill EXP only and requires
+operator permission. Defeating a mob normally grants both rewards through separate formulas.
 
 The skill list is sorted and paged eight entries at a time. `inspect` shows description, readiness
 reason, required levels, and known/unknown SP costs without flooding chat.

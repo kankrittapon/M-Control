@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 import com.zexqm.rpgproject.rpg.skill.SkillActionState;
 import com.zexqm.rpgproject.rpg.skill.PlayerSkillProgress;
+import com.zexqm.rpgproject.rpg.skill.SkillProgressionConfig;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +25,7 @@ public class RpgPlayerData {
     private long experience;
     private int totalSkillPoints;
     private int spentSkillPoints;
+    private long skillExperience;
     private final PlayerSkillProgress skillProgress = new PlayerSkillProgress();
     private final TrainingProgress breath = new TrainingProgress();
     private final TrainingProgress strength = new TrainingProgress();
@@ -48,6 +50,10 @@ public class RpgPlayerData {
     public int totalSkillPoints() { return totalSkillPoints; }
     public int spentSkillPoints() { return spentSkillPoints; }
     public int availableSkillPoints() { return Math.max(0, totalSkillPoints - spentSkillPoints); }
+    public long skillExperience() { return skillExperience; }
+    public long requiredSkillExperience() {
+        return SkillProgressionConfig.values().requiredXp(totalSkillPoints);
+    }
     public PlayerSkillProgress skillProgress() { return skillProgress; }
     public void setLearnedSkillRank(ResourceLocation skill, int rank, int spentDelta) {
         skillProgress.setRank(skill, rank);
@@ -105,21 +111,27 @@ public class RpgPlayerData {
         int gained = 0;
         while (level < LevelCurve.MAX_LEVEL && experience >= LevelCurve.requiredExp(level)) {
             experience -= LevelCurve.requiredExp(level++);
-            totalSkillPoints++;
             gained++;
         }
         if (level >= LevelCurve.MAX_LEVEL) experience = 0;
         return gained;
     }
 
-    public boolean setLevel(int value) {
-        int targetLevel = Math.max(LevelCurve.MIN_LEVEL, Math.min(LevelCurve.MAX_LEVEL, value));
-        int targetSkillPoints = targetLevel - 1;
-        if (spentSkillPoints > targetSkillPoints) return false;
-        level = targetLevel;
+    public void setLevel(int value) {
+        level = Math.max(LevelCurve.MIN_LEVEL, Math.min(LevelCurve.MAX_LEVEL, value));
         experience = 0;
-        totalSkillPoints = targetSkillPoints;
-        return true;
+    }
+
+    public int addSkillExperience(long amount) {
+        if (amount <= 0) return 0;
+        skillExperience += amount;
+        int gained = 0;
+        while (skillExperience >= requiredSkillExperience()) {
+            skillExperience -= requiredSkillExperience();
+            totalSkillPoints++;
+            gained++;
+        }
+        return gained;
     }
 
     public void setClass(RpgClass value) { rpgClass = value; sheathe(); }
@@ -214,6 +226,8 @@ public class RpgPlayerData {
         tag.putLong("Experience", experience);
         tag.putInt("TotalSkillPoints", totalSkillPoints);
         tag.putInt("SpentSkillPoints", spentSkillPoints);
+        tag.putLong("SkillExperience", skillExperience);
+        tag.putInt("SkillProgressVersion", 1);
         tag.put("LearnedSkills", skillProgress.save());
         tag.put("Breath", breath.save());
         tag.put("Strength", strength.save());
@@ -231,9 +245,17 @@ public class RpgPlayerData {
         try { activeSet = WeaponSet.valueOf(tag.getString("ActiveSet")); } catch (Exception ignored) {}
         level = Math.max(LevelCurve.MIN_LEVEL, Math.min(LevelCurve.MAX_LEVEL, tag.contains("Level") ? tag.getInt("Level") : 1));
         experience = Math.max(0, tag.getLong("Experience"));
-        totalSkillPoints = Math.max(0, tag.getInt("TotalSkillPoints"));
-        spentSkillPoints = Math.max(0, Math.min(totalSkillPoints, tag.getInt("SpentSkillPoints")));
-        if (tag.contains("LearnedSkills")) skillProgress.load(tag.getCompound("LearnedSkills"));
+        if (tag.getInt("SkillProgressVersion") >= 1) {
+            totalSkillPoints = Math.max(0, tag.getInt("TotalSkillPoints"));
+            spentSkillPoints = Math.max(0, Math.min(totalSkillPoints, tag.getInt("SpentSkillPoints")));
+            skillExperience = Math.max(0, tag.getLong("SkillExperience"));
+            if (tag.contains("LearnedSkills")) skillProgress.load(tag.getCompound("LearnedSkills"));
+        } else {
+            totalSkillPoints = 0;
+            spentSkillPoints = 0;
+            skillExperience = 0;
+            skillProgress.load(new CompoundTag());
+        }
         if (tag.contains("Breath")) breath.load(tag.getCompound("Breath"));
         if (tag.contains("Strength")) strength.load(tag.getCompound("Strength"));
         if (tag.contains("HealthTraining")) healthTraining.load(tag.getCompound("HealthTraining"));
