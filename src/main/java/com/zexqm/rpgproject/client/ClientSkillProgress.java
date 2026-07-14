@@ -19,7 +19,7 @@ public final class ClientSkillProgress {
         learnedRanks = Map.copyOf(ranks);
         availability = Map.copyOf(availabilityBySkill);
         totalSkillPoints = Math.max(0, totalPoints);
-        spentSkillPoints = Math.max(0, Math.min(totalSkillPoints, spentPoints));
+        spentSkillPoints = Math.max(0, spentPoints);
         skillExperience = Math.max(0, experience);
         requiredSkillExperience = Math.max(1, requiredExperience);
     }
@@ -32,7 +32,7 @@ public final class ClientSkillProgress {
     public static Map<ResourceLocation, SkillAvailability> availability() { return availability; }
     public static int totalSkillPoints() { return totalSkillPoints; }
     public static int spentSkillPoints() { return spentSkillPoints; }
-    public static int availableSkillPoints() { return totalSkillPoints - spentSkillPoints; }
+    public static int availableSkillPoints() { return Math.max(0, totalSkillPoints - spentSkillPoints); }
     public static long skillExperience() { return skillExperience; }
     public static long requiredSkillExperience() { return requiredSkillExperience; }
 

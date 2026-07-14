@@ -120,6 +120,40 @@ class SkillProgressionTest {
     }
 
     @Test
+    void spentPointsReconcileFromCurrentCatalogCosts() {
+        SkillCatalog.replaceForTests(Map.of(ID, entry(true)));
+        SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
+        RpgPlayerData data = new RpgPlayerData();
+        data.setLevel(10);
+        assertEquals(2, data.addSkillExperience(202));
+        assertTrue(SkillLearningService.upgrade(data, ID).success());
+        assertEquals(2, data.spentSkillPoints());
+
+        SkillCatalogEntry repriced = new SkillCatalogEntry(ID, "wizard.learn_test", "Learn Test", "Test",
+                RpgClass.WIZARD, SkillTree.MAIN, null, true, "",
+                List.of(new SkillRankDefinition(1, 1, 5)), List.of(), Set.of());
+        SkillCatalog.replaceForTests(Map.of(ID, repriced));
+
+        assertTrue(SkillLearningService.reconcileSpentSkillPoints(data));
+        assertEquals(5, data.spentSkillPoints());
+        assertEquals(0, data.availableSkillPoints());
+    }
+
+    @Test
+    void incompleteCatalogDoesNotErasePersistedSpending() {
+        SkillCatalog.replaceForTests(Map.of(ID, entry(true)));
+        SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
+        RpgPlayerData data = new RpgPlayerData();
+        data.setLevel(10);
+        assertEquals(2, data.addSkillExperience(202));
+        assertTrue(SkillLearningService.upgrade(data, ID).success());
+
+        SkillCatalog.replaceForTests(Map.of());
+        assertFalse(SkillLearningService.reconcileSpentSkillPoints(data));
+        assertEquals(2, data.spentSkillPoints());
+    }
+
+    @Test
     void parserPreservesMcpIdentityAndRanks() {
         String json = """
                 {"mcp_id":"wizard.fireball","name":"Fireball","description":"Test",

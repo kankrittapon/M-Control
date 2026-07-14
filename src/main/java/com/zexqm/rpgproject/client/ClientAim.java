@@ -82,7 +82,7 @@ public final class ClientAim {
 
         for (Entity entity : minecraft.level.getEntities(player, searchBox, entity ->
                 entity instanceof LivingEntity living && living.isAlive() && entity != player && !entity.isSpectator())) {
-            AABB box = entity.getBoundingBox().inflate(entity.getPickRadius() + 0.35D);
+            AABB box = entity.getBoundingBox();
             Vec3 hit = box.clip(origin, end).orElse(null);
             if (hit == null) {
                 continue;

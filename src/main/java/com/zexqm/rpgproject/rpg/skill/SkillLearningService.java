@@ -3,6 +3,8 @@ package com.zexqm.rpgproject.rpg.skill;
 import com.zexqm.rpgproject.rpg.RpgPlayerData;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.Map;
+
 public final class SkillLearningService {
     public static SkillAvailability availability(RpgPlayerData data, ResourceLocation skillId) {
         SkillCatalogEntry skill = SkillCatalog.get(skillId);
@@ -69,6 +71,22 @@ public final class SkillLearningService {
     }
 
     public static void reset(RpgPlayerData data) { data.resetLearnedSkills(); }
+
+    public static boolean reconcileSpentSkillPoints(RpgPlayerData data) {
+        long recalculated = 0;
+        for (Map.Entry<ResourceLocation, Integer> learned : data.skillProgress().learnedRanks().entrySet()) {
+            SkillCatalogEntry skill = SkillCatalog.get(learned.getKey());
+            if (skill == null || learned.getValue() > skill.maximumRank()) return false;
+            for (int rank = 1; rank <= learned.getValue(); rank++) {
+                SkillRankDefinition definition = skill.rank(rank);
+                if (definition == null || !definition.hasSkillPointCost()) return false;
+                recalculated += definition.skillPointCost();
+                if (recalculated > Integer.MAX_VALUE) return false;
+            }
+        }
+        data.reconcileSpentSkillPoints((int) recalculated);
+        return true;
+    }
 
     private SkillLearningService() {}
 }

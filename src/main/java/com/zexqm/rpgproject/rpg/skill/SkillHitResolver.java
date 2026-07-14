@@ -26,7 +26,7 @@ public final class SkillHitResolver {
                         && target.distanceToSqr(context.caster()) <= range * range) result.add(target);
             }
             case RAY, AIM_PROJECTILE -> {
-                LivingEntity nearest = rayTarget(level, context, end, Math.max(0.5, radius));
+                LivingEntity nearest = rayTarget(level, context, end, Math.max(0.0, radius));
                 if (nearest != null) result.add(nearest);
             }
             case SELF_AOE -> collectCircle(level, context.caster(), context.caster().position(), radius, result);
@@ -38,7 +38,7 @@ public final class SkillHitResolver {
             case LINE -> {
                 for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class,
                         new AABB(context.origin(), end).inflate(radius), view::valid)) {
-                    if (distanceToSegment(target.position(), context.origin(), end) <= radius) result.add(target);
+                    if (intersectsLine(target.getBoundingBox(), context.origin(), end, radius)) result.add(target);
                 }
             }
             case CONE -> {
@@ -66,10 +66,9 @@ public final class SkillHitResolver {
                 target -> target != caster && target.isAlive() && target.distanceToSqr(center) <= radius * radius));
     }
 
-    private static double distanceToSegment(Vec3 point, Vec3 start, Vec3 end) {
-        Vec3 line = end.subtract(start);
-        double t = Math.max(0.0, Math.min(1.0, point.subtract(start).dot(line) / Math.max(1.0E-6, line.lengthSqr())));
-        return point.distanceTo(start.add(line.scale(t)));
+    static boolean intersectsLine(AABB targetBounds, Vec3 start, Vec3 end, double radius) {
+        AABB hitbox = radius > 0.0 ? targetBounds.inflate(radius) : targetBounds;
+        return hitbox.contains(start) || hitbox.clip(start, end).isPresent();
     }
 
     private static LivingEntity rayTarget(ServerLevel level, SkillExecutionContext context,

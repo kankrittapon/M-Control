@@ -118,12 +118,16 @@ Playable class skills, models, and animations are intentionally deferred until t
 
 - Skill metadata is separate from executable combat definitions.
 - Learned ranks and spent/available Skill Points persist in player data.
+- Spent Skill Points are reconciled from learned ranks after login or datapack reload, so revised
+  catalog costs cannot leave progression totals out of sync.
 - Learning, upgrading, downgrading, and reset validation is server-authoritative.
 - Client requests use replay-protected packets and receive rank, SP, and availability state from the server.
 - The Wizard Main MCP catalog contains all 32 stable IDs, names, descriptions, icon source paths,
   rank counts, and known required levels.
 - All Wizard Main entries are currently metadata-only and cannot be learned or cast until SP costs,
   prerequisites, and combat definitions are approved.
+- Crosshair rays use the entity bounding box exactly. Projectile and line width comes only from the
+  skill definition rather than a hidden targeting allowance.
 
 ## Controls
 

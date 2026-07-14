@@ -57,8 +57,9 @@ public class RpgPlayerData {
     public PlayerSkillProgress skillProgress() { return skillProgress; }
     public void setLearnedSkillRank(ResourceLocation skill, int rank, int spentDelta) {
         skillProgress.setRank(skill, rank);
-        spentSkillPoints = Math.max(0, Math.min(totalSkillPoints, spentSkillPoints + spentDelta));
+        spentSkillPoints = Math.max(0, spentSkillPoints + spentDelta);
     }
+    public void reconcileSpentSkillPoints(int value) { spentSkillPoints = Math.max(0, value); }
     public void resetLearnedSkills() { skillProgress.load(new CompoundTag()); spentSkillPoints = 0; }
     public DerivedStats stats() { return ClassProfileManager.get(rpgClass).atLevel(level); }
     public TrainingProgress breath() { return breath; }
@@ -247,7 +248,7 @@ public class RpgPlayerData {
         experience = Math.max(0, tag.getLong("Experience"));
         if (tag.getInt("SkillProgressVersion") >= 1) {
             totalSkillPoints = Math.max(0, tag.getInt("TotalSkillPoints"));
-            spentSkillPoints = Math.max(0, Math.min(totalSkillPoints, tag.getInt("SpentSkillPoints")));
+            spentSkillPoints = Math.max(0, tag.getInt("SpentSkillPoints"));
             skillExperience = Math.max(0, tag.getLong("SkillExperience"));
             if (tag.contains("LearnedSkills")) skillProgress.load(tag.getCompound("LearnedSkills"));
         } else {

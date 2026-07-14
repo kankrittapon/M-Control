@@ -8,6 +8,7 @@ import net.minecraftforge.network.PacketDistributor;
 
 public final class CommonPacketSync {
     public static void syncSkillProgress(ServerPlayer player, RpgPlayerData data) {
+        SkillLearningService.reconcileSpentSkillPoints(data);
         java.util.Map<net.minecraft.resources.ResourceLocation,
                 com.zexqm.rpgproject.rpg.skill.SkillAvailability> availability = new java.util.HashMap<>();
         SkillCatalog.all().forEach(skill -> availability.put(skill.id(),
