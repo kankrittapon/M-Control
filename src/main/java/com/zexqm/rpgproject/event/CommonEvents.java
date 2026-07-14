@@ -139,11 +139,17 @@ public final class CommonEvents {
                 })))
                 .then(Commands.literal("setlevel").then(Commands.argument("level", IntegerArgumentType.integer(1, 100)).executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
-                    player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
-                        data.setLevel(IntegerArgumentType.getInteger(ctx, "level"));
-                        syncRpg(player, data);
-                        CommonPacketSync.syncSkillProgress(player, data);
-                    });
+                    RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+                    if (data == null) return 0;
+                    int level = IntegerArgumentType.getInteger(ctx, "level");
+                    if (!data.setLevel(level)) {
+                        ctx.getSource().sendFailure(Component.literal(
+                                "Cannot lower to level " + level + ": reset learned skills first (spent SP="
+                                        + data.spentSkillPoints() + ")"));
+                        return 0;
+                    }
+                    syncRpg(player, data);
+                    CommonPacketSync.syncSkillProgress(player, data);
                     return 1;
                 })))
                 .then(Commands.literal("protection").requires(source -> source.hasPermission(2))

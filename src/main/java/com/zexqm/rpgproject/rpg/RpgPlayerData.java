@@ -112,11 +112,14 @@ public class RpgPlayerData {
         return gained;
     }
 
-    public void setLevel(int value) {
-        level = Math.max(LevelCurve.MIN_LEVEL, Math.min(LevelCurve.MAX_LEVEL, value));
+    public boolean setLevel(int value) {
+        int targetLevel = Math.max(LevelCurve.MIN_LEVEL, Math.min(LevelCurve.MAX_LEVEL, value));
+        int targetSkillPoints = targetLevel - 1;
+        if (spentSkillPoints > targetSkillPoints) return false;
+        level = targetLevel;
         experience = 0;
-        totalSkillPoints = Math.max(totalSkillPoints, level - 1);
-        spentSkillPoints = Math.min(spentSkillPoints, totalSkillPoints);
+        totalSkillPoints = targetSkillPoints;
+        return true;
     }
 
     public void setClass(RpgClass value) { rpgClass = value; sheathe(); }

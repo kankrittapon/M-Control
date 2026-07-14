@@ -90,6 +90,24 @@ class SkillProgressionTest {
     }
 
     @Test
+    void debugLevelChangesCannotDuplicateSkillPoints() {
+        RpgPlayerData data = new RpgPlayerData();
+        assertTrue(data.setLevel(50));
+        assertEquals(49, data.availableSkillPoints());
+        assertTrue(data.setLevel(1));
+        assertEquals(0, data.availableSkillPoints());
+        assertEquals(18, data.addExperience(100_000));
+        assertEquals(18, data.availableSkillPoints());
+
+        SkillCatalog.replaceForTests(Map.of(ID, entry(true)));
+        SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
+        assertTrue(SkillLearningService.upgrade(data, ID).success());
+        assertFalse(data.setLevel(1));
+        assertEquals(19, data.level());
+        assertEquals(1, data.skillProgress().rank(ID));
+    }
+
+    @Test
     void parserPreservesMcpIdentityAndRanks() {
         String json = """
                 {"mcp_id":"wizard.fireball","name":"Fireball","description":"Test",
