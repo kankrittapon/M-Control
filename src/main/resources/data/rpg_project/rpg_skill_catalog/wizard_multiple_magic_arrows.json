@@ -4,15 +4,21 @@
   "description": "Multiple Magic Arrows is a combat skill for the Witch and Wizard. Shoots multiple magic arrows to attack.",
   "class": "wizard",
   "tree": "main",
-  "icon": "textures/gui/skills/wizard/main/4.Multiple Magic Arrows.png",
-  "playable": false,
-  "unavailable_reason": "Missing verified SP cost, prerequisites, and combat definition; single-rank metadata comes from the audited current tooltip",
+  "sp_tier": "advanced",
+  "icon": "textures/gui/skills/wizard/main/multiple_magic_arrows.png",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,
       "required_level": 49
     }
   ],
-  "prerequisites": [],
+  "prerequisites": [
+    {
+      "skill": "rpg_project:wizard_magic_arrow",
+      "minimum_rank": 5
+    }
+  ],
   "mutually_exclusive": []
 }

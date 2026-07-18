@@ -16,7 +16,7 @@ Checkpoint date: 2026-07-14
 
 1. Fireball: playable, client-tested, regression-covered.
 2. Fireball Explosion: playable, client-tested, regression-covered.
-3. Concentrated Magic Arrow: combat definition complete, gated by BRPG SP cost and acceptance.
+3. Concentrated Magic Arrow: combat definition and trial SP tier complete, gated by acceptance.
 4. Multiple Magic Arrows: metadata only.
 5. Mana Absorption: metadata only.
 6. Lightning: metadata corrected; combat missing.

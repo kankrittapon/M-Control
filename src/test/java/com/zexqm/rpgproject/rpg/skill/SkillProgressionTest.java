@@ -61,6 +61,25 @@ class SkillProgressionTest {
     }
 
     @Test
+    void acceptanceForceUpgradeBypassesOnlyPrerequisiteGate() {
+        ResourceLocation prerequisite = new ResourceLocation("rpg_project", "unfinished_prerequisite");
+        SkillCatalogEntry gated = new SkillCatalogEntry(ID, "wizard.learn_test", "Learn Test", "Test",
+                RpgClass.WIZARD, SkillTree.MAIN, null, true, "",
+                List.of(new SkillRankDefinition(1, 1, 2)),
+                List.of(new SkillRequirement(prerequisite, 1)), Set.of());
+        SkillCatalog.replaceForTests(Map.of(ID, gated));
+        SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
+        RpgPlayerData data = new RpgPlayerData();
+        data.addSkillExperience(202);
+
+        assertEquals(SkillAvailability.PREREQUISITE_REQUIRED,
+                SkillLearningService.availability(data, ID));
+        assertTrue(SkillLearningService.forceUpgradeForAcceptance(data, ID).success());
+        assertEquals(1, data.skillProgress().rank(ID));
+        assertEquals(2, data.spentSkillPoints());
+    }
+
+    @Test
     void upgradeDowngradeAndPersistenceKeepPointsConsistent() {
         SkillCatalog.replaceForTests(Map.of(ID, entry(true)));
         SkillRegistry.replaceForTests(Map.of(ID, combatDefinition()));
@@ -198,18 +217,61 @@ class SkillProgressionTest {
                 assertEquals(id.getPath(), parsed.mcpId());
                 if (id.getPath().equals("wizard_fireball")) {
                     assertTrue(parsed.playable());
-                    assertEquals(List.of(10, 15, 20, 30), parsed.ranks().stream()
+                    assertEquals(List.of(10, 20, 30, 40), parsed.ranks().stream()
                             .map(SkillRankDefinition::skillPointCost).toList());
                 } else if (id.getPath().equals("wizard_fireball_explosion")) {
                     assertTrue(parsed.playable());
+                    assertEquals(List.of(50, 75, 100), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
                     assertEquals(new ResourceLocation("rpg_project", "wizard_fireball"),
                             parsed.prerequisites().get(0).skillId());
+                } else if (id.getPath().equals("wizard_concentrated_magic_arrow")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(25, 40, 60), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                } else if (id.getPath().equals("wizard_multiple_magic_arrows")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(50), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertEquals(new ResourceLocation("rpg_project", "wizard_magic_arrow"),
+                            parsed.prerequisites().get(0).skillId());
+                    assertEquals(5, parsed.prerequisites().get(0).minimumRank());
+                } else if (id.getPath().equals("wizard_mana_absorption")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(25, 40, 60), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                } else if (id.getPath().equals("wizard_lightning")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(10, 20, 30, 40, 50), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                } else if (id.getPath().equals("wizard_lightning_chain")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(25, 40, 60, 80), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
                 } else {
                     assertFalse(parsed.playable(), id.toString());
                 }
             }
-            assertEquals(2, playable);
+            assertEquals(7, playable);
         }
+    }
+
+    @Test
+    void phaseFivePlayableSkillPointBudgetTotalsSevenHundredSeventyFive() throws Exception {
+        assertEquals(100, totalSkillPointCost("wizard_fireball"));
+        assertEquals(225, totalSkillPointCost("wizard_fireball_explosion"));
+        assertEquals(125, totalSkillPointCost("wizard_concentrated_magic_arrow"));
+        assertEquals(50, totalSkillPointCost("wizard_multiple_magic_arrows"));
+        assertEquals(125, totalSkillPointCost("wizard_mana_absorption"));
+        assertEquals(150, totalSkillPointCost("wizard_lightning"));
+        assertEquals(205, totalSkillPointCost("wizard_lightning_chain"));
+        assertEquals(980, totalSkillPointCost("wizard_fireball")
+                + totalSkillPointCost("wizard_fireball_explosion")
+                + totalSkillPointCost("wizard_concentrated_magic_arrow")
+                + totalSkillPointCost("wizard_multiple_magic_arrows")
+                + totalSkillPointCost("wizard_mana_absorption")
+                + totalSkillPointCost("wizard_lightning")
+                + totalSkillPointCost("wizard_lightning_chain"));
     }
 
     @Test
@@ -225,6 +287,13 @@ class SkillProgressionTest {
         SkillCatalogEntry missing = entry(missingId, "missing_owner",
                 new ResourceLocation("rpg_project", "does_not_exist"));
         assertEquals(Set.of(missingId), SkillCatalog.validateGraph(Map.of(missingId, missing)));
+    }
+
+    private static int totalSkillPointCost(String path) throws Exception {
+        Path file = Path.of("src/main/resources/data/rpg_project/rpg_skill_catalog", path + ".json");
+        SkillCatalogEntry entry = SkillCatalog.parse(new ResourceLocation("rpg_project", path),
+                JsonParser.parseString(Files.readString(file)).getAsJsonObject());
+        return entry.ranks().stream().mapToInt(SkillRankDefinition::skillPointCost).sum();
     }
 
     private static SkillCatalogEntry entry(boolean playable) {

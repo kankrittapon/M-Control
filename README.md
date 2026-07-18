@@ -6,6 +6,11 @@ Playable class skills, models, and animations are intentionally deferred until t
 
 Current checkpoint: [`TASK.md`](TASK.md) | [`PHASE.md`](PHASE.md) | [`WhatIdo.md`](WhatIdo.md)
 
+Unified automated/manual acceptance status: [`docs/TEST_CHECKLIST.md`](docs/TEST_CHECKLIST.md)
+
+The trial datapack-backed Skill Point tiers are documented in
+[`docs/SKILL_POINT_COST_POLICY.md`](docs/SKILL_POINT_COST_POLICY.md).
+
 ## Requirements
 
 - Minecraft 1.20.1
@@ -229,6 +234,8 @@ The frozen eight-skill roster and per-skill readiness gates are in
 [`docs/PHASE5_BATCH_A_MANIFEST.md`](docs/PHASE5_BATCH_A_MANIFEST.md).
 Concentrated Magic Arrow source values and provisional delivery tuning are documented in
 [`docs/PHASE5_CONCENTRATED_MAGIC_ARROW_TUNING.md`](docs/PHASE5_CONCENTRATED_MAGIC_ARROW_TUNING.md).
+Its temporary operator acceptance flow is in
+[`docs/PHASE5_CONCENTRATED_MAGIC_ARROW_TEST.md`](docs/PHASE5_CONCENTRATED_MAGIC_ARROW_TEST.md).
 
 The first playable vertical slice is Fireball into Fireball Explosion. Client setup, cast commands,
 collision checks, and expected structured logs are in

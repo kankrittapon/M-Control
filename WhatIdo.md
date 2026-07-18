@@ -10,6 +10,7 @@ Updated: 2026-07-14
   Vanilla and modded LivingEntity types.
 - Added level 1-100, persistent EXP, independent Skill EXP/SP, class/spec, equipment, stamina,
   training stats, learned ranks, and persistent cooldowns.
+- Added datapack-backed Basic/Core/Advanced/Ultimate SP tiers with per-rank overrides.
 - Added data-driven skill catalog/runtime, targeting shapes, multi-hit timelines, resources,
   protection windows, projectile collision, impact AoE, skill links, and structured debug logs.
 

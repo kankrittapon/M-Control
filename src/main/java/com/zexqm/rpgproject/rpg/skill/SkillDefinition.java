@@ -24,12 +24,15 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
                               List<ProtectionWindow> protectionWindows,
                               CooldownRecastPolicy cooldownRecast, SkillLinkPolicy links,
                               TransitionPolicy transitions, double projectileSpeed,
-                              FacingPolicy facingPolicy, double turnSpeed) {
+                              FacingPolicy facingPolicy, double turnSpeed,
+                              double castMpRecoveryPercent) {
     public SkillDefinition {
         if (id == null || targeting == null || weapons == null || resourceType == null
                 || movementPolicy == null || cancelPolicy == null) throw new IllegalArgumentException("Missing skill field");
         if (rank < 0 || resourceCost < 0 || staminaCost < 0 || cooldownTicks < 0 || castTicks < 0
-                || recoveryTicks < 0 || range < 0 || radius < 0 || projectileSpeed < 0 || turnSpeed < 0)
+                || recoveryTicks < 0 || range < 0 || radius < 0 || projectileSpeed < 0 || turnSpeed < 0
+                || !Double.isFinite(castMpRecoveryPercent) || castMpRecoveryPercent < 0
+                || castMpRecoveryPercent > 1)
             throw new IllegalArgumentException("Negative skill value");
         if (targeting == SkillTargetingType.AIM_PROJECTILE && projectileSpeed <= 0)
             throw new IllegalArgumentException("Aim projectile skills require projectile_speed");
@@ -53,7 +56,7 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
                 cancelPolicy, range, radius, hits, protectionWindows, CooldownRecastPolicy.DISABLED,
                 SkillLinkPolicy.NONE, TransitionPolicy.fromLegacy(cancelPolicy),
                 targeting == SkillTargetingType.AIM_PROJECTILE ? 1.0 : 0.0,
-                FacingPolicy.NONE, 0.0);
+                FacingPolicy.NONE, 0.0, 0.0);
     }
 
     public record TransitionPolicy(int movementCancelFromTick, boolean movementUntilFirstHit,
@@ -120,12 +123,15 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
                       List<SmashPayload> smashes, ResourcePayload resources,
                       SkillImpactShape impactShape, int maxTargets,
                       double forwardOffset, double rightOffset,
-                      double hitChanceBonus, double criticalChanceBonus) {
+                      double hitChanceBonus, double criticalChanceBonus,
+                      double additionalTargetDamagePenalty, double minimumTargetDamageMultiplier) {
         public Hit {
             if (timingTick < 0 || baseDamage < 0 || coefficient < 0 || radius < 0
                     || maxTargets < 0 || !Double.isFinite(forwardOffset) || !Double.isFinite(rightOffset)
                     || hitChanceBonus < 0 || hitChanceBonus > 1
-                    || criticalChanceBonus < 0 || criticalChanceBonus > 1)
+                    || criticalChanceBonus < 0 || criticalChanceBonus > 1
+                    || additionalTargetDamagePenalty < 0 || additionalTargetDamagePenalty > 1
+                    || minimumTargetDamageMultiplier < 0 || minimumTargetDamageMultiplier > 1)
                 throw new IllegalArgumentException("Invalid hit values");
             powerType = powerType == null ? RpgPowerType.NONE : powerType;
             specialAttacks = Set.copyOf(specialAttacks == null ? Set.of() : specialAttacks);
@@ -141,7 +147,12 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
                    List<SmashPayload> smashes) {
             this(timingTick, baseDamage, coefficient, radius, powerType, crowdControl,
                     specialAttacks, statuses, smashes, ResourcePayload.NONE,
-                    SkillImpactShape.AUTO, 0, 0, 0, 0, 0);
+                    SkillImpactShape.AUTO, 0, 0, 0, 0, 0, 0, 1);
+        }
+
+        public double targetDamageMultiplier(int targetIndex) {
+            return Math.max(minimumTargetDamageMultiplier,
+                    1.0 - additionalTargetDamagePenalty * Math.max(0, targetIndex));
         }
     }
 

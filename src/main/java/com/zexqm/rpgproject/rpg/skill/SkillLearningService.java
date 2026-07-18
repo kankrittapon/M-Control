@@ -47,6 +47,34 @@ public final class SkillLearningService {
                 data.availableSkillPoints());
     }
 
+    public static SkillLearningResult forceUpgradeForAcceptance(RpgPlayerData data, ResourceLocation skillId) {
+        int previous = data.skillProgress().rank(skillId);
+        SkillCatalogEntry skill = SkillCatalog.get(skillId);
+        if (skill == null || !skill.playable())
+            return SkillLearningResult.rejected(SkillAvailability.METADATA_ONLY, previous,
+                    data.availableSkillPoints());
+        if (skill.rpgClass() != data.rpgClass())
+            return SkillLearningResult.rejected(SkillAvailability.WRONG_CLASS, previous,
+                    data.availableSkillPoints());
+        if (previous >= skill.maximumRank())
+            return SkillLearningResult.rejected(SkillAvailability.MAX_RANK, previous,
+                    data.availableSkillPoints());
+        SkillRankDefinition next = skill.rank(previous + 1);
+        SkillDefinition combat = SkillRegistry.get(skillId, previous + 1);
+        if (next == null || !next.hasSkillPointCost() || combat == null || combat.debugOnly())
+            return SkillLearningResult.rejected(SkillAvailability.METADATA_ONLY, previous,
+                    data.availableSkillPoints());
+        if (data.level() < next.requiredLevel())
+            return SkillLearningResult.rejected(SkillAvailability.LEVEL_REQUIRED, previous,
+                    data.availableSkillPoints());
+        if (data.availableSkillPoints() < next.skillPointCost())
+            return SkillLearningResult.rejected(SkillAvailability.NOT_ENOUGH_SKILL_POINTS, previous,
+                    data.availableSkillPoints());
+        data.setLearnedSkillRank(skillId, previous + 1, next.skillPointCost());
+        return new SkillLearningResult(true, SkillAvailability.AVAILABLE, previous, previous + 1,
+                data.availableSkillPoints());
+    }
+
     public static SkillLearningResult downgrade(RpgPlayerData data, ResourceLocation skillId) {
         int previous = data.skillProgress().rank(skillId);
         if (previous <= 0) return SkillLearningResult.rejected(SkillAvailability.UNKNOWN_SKILL, 0,

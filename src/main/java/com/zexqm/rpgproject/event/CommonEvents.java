@@ -6,6 +6,8 @@ import com.zexqm.rpgproject.mana.ManaProvider;
 import com.zexqm.rpgproject.network.RpgNetwork;
 import com.zexqm.rpgproject.network.SyncManaPacket;
 import com.zexqm.rpgproject.network.SyncRpgDataPacket;
+import com.zexqm.rpgproject.network.RequestClientAimCastPacket;
+import net.minecraftforge.network.PacketDistributor;
 import com.zexqm.rpgproject.rpg.RpgPlayerData;
 import com.zexqm.rpgproject.rpg.RpgPlayerDataProvider;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,6 +22,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
+import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
@@ -59,6 +62,7 @@ import com.zexqm.rpgproject.rpg.skill.MovementPolicy;
 import com.zexqm.rpgproject.rpg.skill.PrimaryResourceType;
 import com.zexqm.rpgproject.rpg.status.RpgStatusService;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.PacketDistributor;
@@ -182,6 +186,21 @@ public final class CommonEvents {
                                     return 1;
                                 }))))
                 .then(Commands.literal("debug").requires(source -> source.hasPermission(2))
+                        .then(Commands.literal("mana")
+                                .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                    Mana mana = player.getCapability(ManaProvider.MANA).orElse(null);
+                                    if (mana == null) return 0;
+                                    int before = mana.getMana();
+                                    mana.setMana(IntegerArgumentType.getInteger(ctx, "amount"));
+                                    RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                                            new SyncManaPacket(mana.getMana(), mana.getMaxMana()));
+                                    RpgProject.LOGGER.info("[RPG Skill] debug-mana player={} before={} after={} max={}",
+                                            player.getScoreboardName(), before, mana.getMana(), mana.getMaxMana());
+                                    ctx.getSource().sendSuccess(() -> Component.literal("MP=" + mana.getMana()
+                                            + "/" + mana.getMaxMana()), false);
+                                    return 1;
+                                })))
                         .then(Commands.literal("cc")
                                 .then(Commands.argument("target", EntityArgument.entity())
                                         .then(Commands.argument("type", StringArgumentType.word()).executes(ctx -> {
@@ -224,7 +243,7 @@ public final class CommonEvents {
                                     Vec3 ground = aimed instanceof net.minecraft.world.phys.BlockHitResult blockHit
                                             ? blockHit.getLocation() : origin.add(direction.scale(8.0));
                                     if (skill != null && switch (skill.targeting()) {
-                                        case RAY, AIM_PROJECTILE, LINE, ENTITY_TARGETED, GROUND_AOE, CIRCLE -> true;
+                                        case RAY, AIM_PROJECTILE, LINE, CHAIN, ENTITY_TARGETED, GROUND_AOE, CIRCLE -> true;
                                         default -> false;
                                     }) {
                                         LivingEntity nearest = player.serverLevel().getEntitiesOfClass(LivingEntity.class,
@@ -245,7 +264,22 @@ public final class CommonEvents {
                                             origin, direction, targetId, ground));
                                     ctx.getSource().sendSuccess(() -> Component.literal("Skill cast result=" + result), false);
                                     return result == com.zexqm.rpgproject.rpg.skill.SkillCastResult.STARTED ? 1 : 0;
+                                })))
+                        .then(Commands.literal("aim-cast")
+                                .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                    var skillId = ResourceLocationArgument.getId(ctx, "skill");
+                                    RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                                            new RequestClientAimCastPacket(skillId));
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Requested client-camera aim for " + skillId), false);
+                                    return 1;
                                 }))))
+                .then(Commands.literal("debug-ground").requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("skill", ResourceLocationArgument.id())
+                                .then(Commands.argument("distance", IntegerArgumentType.integer(1, 128))
+                                        .executes(ctx -> debugGroundCast(ctx,
+                                                IntegerArgumentType.getInteger(ctx, "distance"))))))
                 .then(Commands.literal("skills")
                         .then(Commands.literal("list")
                                 .executes(ctx -> listSkills(ctx.getSource(), 1))
@@ -264,6 +298,20 @@ public final class CommonEvents {
                                             ResourceLocationArgument.getId(ctx, "skill"));
                                     CommonPacketSync.syncSkillProgress(player, data);
                                     ctx.getSource().sendSuccess(() -> Component.literal("Skill upgrade: " + result), false);
+                                    return result.success() ? 1 : 0;
+                                })))
+                        .then(Commands.literal("force-upgrade").requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                    var data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+                                    if (data == null) return 0;
+                                    ResourceLocation id = ResourceLocationArgument.getId(ctx, "skill");
+                                    var result = SkillLearningService.forceUpgradeForAcceptance(data, id);
+                                    CommonPacketSync.syncSkillProgress(player, data);
+                                    RpgProject.LOGGER.info("[RPG Skill] acceptance-force-upgrade player={} skill={} result={}",
+                                            player.getScoreboardName(), id, result);
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Acceptance force-upgrade: " + result), false);
                                     return result.success() ? 1 : 0;
                                 })))
                         .then(Commands.literal("downgrade")
@@ -543,6 +591,23 @@ public final class CommonEvents {
                 .collect(java.util.stream.Collectors.joining(", "));
         if (!ranks.isBlank()) source.sendSuccess(() -> Component.literal(ranks), false);
         return 1;
+    }
+
+    private static int debugGroundCast(CommandContext<CommandSourceStack> context, double distance)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        ResourceLocation id = ResourceLocationArgument.getId(context, "skill");
+        Vec3 origin = player.getEyePosition();
+        Vec3 direction = player.getLookAngle().normalize();
+        Vec3 ground = origin.add(direction.scale(distance));
+        RpgProject.LOGGER.info(
+                "[RPG Skill] debug-cast-ground player={} skill={} distance={} origin={} ground={} direction={}",
+                player.getScoreboardName(), id, distance, origin, ground, direction);
+        var result = SkillRuntime.cast(player, id,
+                new SkillExecutionContext(player, origin, direction, null, ground));
+        context.getSource().sendSuccess(() -> Component.literal(
+                "Ground cast distance=" + distance + " result=" + result), false);
+        return result == com.zexqm.rpgproject.rpg.skill.SkillCastResult.STARTED ? 1 : 0;
     }
 
     public static void syncCombatState(ServerPlayer player) {

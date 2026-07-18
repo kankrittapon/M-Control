@@ -31,6 +31,7 @@ public final class SkillHitResolver {
                 LivingEntity nearest = rayTarget(level, context, end, Math.max(0.0, radius));
                 if (nearest != null) result.add(nearest);
             }
+            case CHAIN -> collectChain(level, context, radius, hit.maxTargets(), result);
             case SELF_AOE -> collectCircle(level, context.caster(), context.caster().position(), radius, result);
             case GROUND_AOE, CIRCLE -> {
                 Vec3 center = offsetCenter(context.groundPosition() == null ? end : context.groundPosition(),
@@ -59,6 +60,7 @@ public final class SkillHitResolver {
                 context.caster().hurtMarked = true;
             }
         }
+        if (definition.targeting() == SkillTargetingType.CHAIN) return result;
         return limit(result, context.caster(), impactCenter(definition, hit, context), hit.maxTargets());
     }
 
@@ -154,6 +156,31 @@ public final class SkillHitResolver {
             }
         }
         return nearest;
+    }
+
+    private static void collectChain(ServerLevel level, SkillExecutionContext context,
+                                     double jumpRadius, int maxTargets, Set<LivingEntity> result) {
+        LivingEntity current = context.targetEntityId() != null
+                && level.getEntity(context.targetEntityId()) instanceof LivingEntity living
+                && validTarget(context.caster(), living) ? living : null;
+        if (current == null) return;
+        int limit = Math.max(1, maxTargets);
+        result.add(current);
+        while (result.size() < limit) {
+            Vec3 anchor = current.getBoundingBox().getCenter();
+            LivingEntity next = level.getEntitiesOfClass(LivingEntity.class,
+                            current.getBoundingBox().inflate(jumpRadius),
+                            target -> validTarget(context.caster(), target) && !result.contains(target)
+                                    && distanceToBoundsSqr(anchor, target.getBoundingBox())
+                                    <= jumpRadius * jumpRadius)
+                    .stream()
+                    .min(Comparator.comparingDouble(target ->
+                            distanceToBoundsSqr(anchor, target.getBoundingBox())))
+                    .orElse(null);
+            if (next == null) break;
+            result.add(next);
+            current = next;
+        }
     }
 
     private record ServerPlayerView(SkillExecutionContext context) {

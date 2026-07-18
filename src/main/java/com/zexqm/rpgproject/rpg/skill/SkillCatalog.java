@@ -41,12 +41,19 @@ public final class SkillCatalog extends SimpleJsonResourceReloadListener {
     }
 
     static SkillCatalogEntry parse(ResourceLocation id, JsonObject root) {
+        SkillCostTier costTier = root.has("sp_tier")
+                ? SkillCostTier.valueOf(GsonHelper.getAsString(root, "sp_tier").toUpperCase(Locale.ROOT))
+                : null;
         List<SkillRankDefinition> ranks = new ArrayList<>();
         for (JsonElement value : array(root, "ranks")) {
             JsonObject rank = value.getAsJsonObject();
+            Integer skillPointCost = rank.has("sp_cost")
+                    ? Integer.valueOf(GsonHelper.getAsInt(rank, "sp_cost"))
+                    : SkillProgressionConfig.values().skillPointCost(
+                    costTier, GsonHelper.getAsInt(rank, "rank"));
             ranks.add(new SkillRankDefinition(GsonHelper.getAsInt(rank, "rank"),
                     GsonHelper.getAsInt(rank, "required_level", 1),
-                    rank.has("sp_cost") ? GsonHelper.getAsInt(rank, "sp_cost") : null));
+                    skillPointCost));
         }
         List<SkillRequirement> prerequisites = new ArrayList<>();
         for (JsonElement value : array(root, "prerequisites")) {

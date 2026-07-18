@@ -4,9 +4,10 @@
   "description": "Mana Absorption is a combat skill for the Witch and Wizard. Takes the opponent's mana to recover the character's mana.",
   "class": "wizard",
   "tree": "main",
-  "icon": "textures/gui/skills/wizard/main/5.Mana Absorption.png",
-  "playable": false,
-  "unavailable_reason": "Missing verified SP costs, prerequisites, and combat definition; cooldown/resource conflict remains documented",
+  "sp_tier": "core",
+  "icon": "textures/gui/skills/wizard/main/mana_absorption.png",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,

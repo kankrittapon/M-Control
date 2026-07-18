@@ -1,0 +1,13 @@
+{
+  "skill_id": "rpg_project:wizard_lightning_chain", "class": "wizard", "rank": 4,
+  "targeting": "chain", "weapons": {"weapon_set": "main", "main": true, "sub": true},
+  "resource_type": "mp", "resource_cost": 65, "cooldown_ticks": 0,
+  "cast_ticks": 12, "recovery_ticks": 4, "movement_policy": "rotate_only",
+  "facing_policy": "track_aim_until_release", "turn_speed": 60.0, "range": 16.0, "radius": 4.0,
+  "additional_target_damage_penalty": 0.15, "minimum_target_damage_multiplier": 0.40,
+  "links": {"grant": "rpg_project:lightning_storm_ready", "grant_duration_ticks": 140, "grant_timing": "cast_complete"},
+  "hits": [
+    {"timing_tick": 5, "radius": 4.0, "max_targets": 6, "coefficient": 2.6698, "power_type": "magic", "crowd_control": "stiffness", "hit_chance_bonus": 0.0625, "statuses": [{"type": "slow", "duration_ticks": 100, "potency": 0.20, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]},
+    {"timing_tick": 10, "radius": 4.0, "max_targets": 6, "coefficient": 2.6698, "power_type": "magic", "hit_chance_bonus": 0.0625, "statuses": [{"type": "slow", "duration_ticks": 100, "potency": 0.20, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]}
+  ]
+}

@@ -8,6 +8,7 @@ public enum SkillTargetingType {
     CIRCLE,
     SELF_AOE,
     GROUND_AOE,
+    CHAIN,
     ENTITY_TARGETED,
     MOVEMENT
 }

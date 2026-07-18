@@ -68,3 +68,17 @@ Expected behavior:
 2. Place a solid block between player and zombie: Fireball must end with `reason=BLOCK`.
 3. Select one entity but aim at another: Fireball must follow the aim direction, not selection.
 4. Relog after Fireball, then cast Explosion: the transient link must be gone.
+
+## Rejection Checks
+
+Set MP below Fireball's rank IV cost, attempt the cast, then restore it:
+
+```mcfunction
+/rpg debug mana 29
+/rpg debug cast rpg_project:wizard_fireball
+/rpg debug mana 680
+```
+
+The cast must return `INSUFFICIENT_RESOURCE`. It must not grant the Explosion link or start a
+cooldown. After a successful Fireball and Explosion, casting Explosion a second time must return
+`MISSING_SKILL_LINK` without spending another 85 MP.

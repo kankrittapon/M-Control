@@ -1,0 +1,23 @@
+{
+  "skill_id": "rpg_project:wizard_mana_absorption",
+  "class": "wizard",
+  "rank": 2,
+  "targeting": "cone",
+  "weapons": {"weapon_set": "main", "main": true, "sub": true},
+  "resource_type": "mp",
+  "resource_cost": 0,
+  "cast_mp_recovery_percent": 0.20,
+  "cooldown_ticks": 180,
+  "cast_ticks": 14,
+  "recovery_ticks": 6,
+  "movement_policy": "rotate_only",
+  "facing_policy": "track_aim_until_release",
+  "turn_speed": 60.0,
+  "transitions": {},
+  "range": 8.0,
+  "protection_windows": [{"type": "front_guard", "from_tick": 0, "to_tick": 12}],
+  "hits": [
+    {"timing_tick": 8, "max_targets": 7, "coefficient": 1.1189, "power_type": "magic", "statuses": [{"type": "slow", "duration_ticks": 100, "potency": 0.20, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]},
+    {"timing_tick": 12, "max_targets": 7, "coefficient": 1.1189, "power_type": "magic", "statuses": [{"type": "slow", "duration_ticks": 100, "potency": 0.20, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]}
+  ]
+}

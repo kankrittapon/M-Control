@@ -75,8 +75,11 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsBoolean(weapon, "main", true),
                 GsonHelper.getAsBoolean(weapon, "sub", false),
                 GsonHelper.getAsBoolean(weapon, "awakening", false));
+        double targetPenalty = GsonHelper.getAsDouble(root, "additional_target_damage_penalty", 0);
+        double minimumTargetMultiplier = GsonHelper.getAsDouble(root, "minimum_target_damage_multiplier", 1);
         List<SkillDefinition.Hit> hits = new ArrayList<>();
-        for (JsonElement hitElement : array(root, "hits")) hits.add(parseHit(hitElement.getAsJsonObject()));
+        for (JsonElement hitElement : array(root, "hits")) hits.add(parseHit(
+                hitElement.getAsJsonObject(), targetPenalty, minimumTargetMultiplier));
         List<SkillDefinition.ProtectionWindow> windows = new ArrayList<>();
         for (JsonElement window : array(root, "protection_windows")) {
             JsonObject item = window.getAsJsonObject();
@@ -128,10 +131,12 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 hits, windows, cooldownRecast, linkPolicy, transitionPolicy,
                 GsonHelper.getAsDouble(root, "projectile_speed", 0),
                 value(FacingPolicy.class, root, "facing_policy", FacingPolicy.NONE),
-                GsonHelper.getAsDouble(root, "turn_speed", 0));
+                GsonHelper.getAsDouble(root, "turn_speed", 0),
+                GsonHelper.getAsDouble(root, "cast_mp_recovery_percent", 0));
     }
 
-    private static SkillDefinition.Hit parseHit(JsonObject root) {
+    private static SkillDefinition.Hit parseHit(JsonObject root, double defaultTargetPenalty,
+                                                double defaultMinimumTargetMultiplier) {
         Set<SpecialAttackType> specials = EnumSet.noneOf(SpecialAttackType.class);
         for (JsonElement element : array(root, "special_attacks"))
             specials.add(SpecialAttackType.valueOf(element.getAsString().toUpperCase(Locale.ROOT)));
@@ -169,7 +174,9 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsDouble(root, "forward_offset", 0),
                 GsonHelper.getAsDouble(root, "right_offset", 0),
                 GsonHelper.getAsDouble(root, "hit_chance_bonus", 0),
-                GsonHelper.getAsDouble(root, "critical_chance_bonus", 0));
+                GsonHelper.getAsDouble(root, "critical_chance_bonus", 0),
+                GsonHelper.getAsDouble(root, "additional_target_damage_penalty", defaultTargetPenalty),
+                GsonHelper.getAsDouble(root, "minimum_target_damage_multiplier", defaultMinimumTargetMultiplier));
     }
 
     private static JsonObject object(JsonObject root, String key) {

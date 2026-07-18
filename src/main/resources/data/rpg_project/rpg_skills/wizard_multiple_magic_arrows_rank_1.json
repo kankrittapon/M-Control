@@ -1,0 +1,33 @@
+{
+  "skill_id": "rpg_project:wizard_multiple_magic_arrows",
+  "class": "wizard",
+  "rank": 1,
+  "targeting": "aim_projectile",
+  "weapons": {"weapon_set": "main", "main": true, "sub": true},
+  "resource_type": "mp",
+  "resource_cost": 100,
+  "cooldown_ticks": 220,
+  "cast_ticks": 5,
+  "recovery_ticks": 5,
+  "movement_policy": "walk",
+  "facing_policy": "track_aim_until_release",
+  "turn_speed": 75.0,
+  "transitions": {},
+  "range": 24.0,
+  "projectile_speed": 1.5,
+  "cooldown_recast": {
+    "enabled": true,
+    "damage_multiplier": 0.35,
+    "allow_critical": false,
+    "allow_special_attacks": false,
+    "allow_cc": false,
+    "allow_smash": false,
+    "allow_statuses": false,
+    "allow_resources": false,
+    "allow_protection": false
+  },
+  "hits": [
+    {"timing_tick": 3, "impact_shape": "circle", "radius": 1.5, "max_targets": 10, "coefficient": 1.2574, "power_type": "magic", "critical_chance_bonus": 1.0},
+    {"timing_tick": 4, "impact_shape": "circle", "radius": 1.5, "max_targets": 10, "coefficient": 1.2574, "power_type": "magic", "critical_chance_bonus": 1.0}
+  ]
+}

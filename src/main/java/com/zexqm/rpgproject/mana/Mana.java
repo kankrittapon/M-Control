@@ -18,6 +18,7 @@ public class Mana {
 
     public void setMana(int value) {
         mana = Math.max(0, Math.min(value, maxMana));
+        regenTicks = 0;
     }
 
     public void setMaxMana(int value) {

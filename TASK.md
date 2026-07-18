@@ -7,6 +7,8 @@ Checkpoint date: 2026-07-14
 Phase 5 Wizard Main Batch A is active. World Core and the generic Skill Runtime are treated as
 stable foundations; change them only for a reproduced bug or a required production-skill contract.
 
+Run the unified acceptance checklist in `docs/TEST_CHECKLIST.md` before implementing the next skill.
+
 ## Completed This Week
 
 - Fireball and Fireball Explosion production definitions, projectile collision, impact anchor, AoE,
@@ -20,9 +22,10 @@ stable foundations; change them only for a reproduced bug or a required producti
 
 ## Next Tasks
 
-- [ ] Define the BRPG Skill Point cost policy. Do not map generic MCP `cost` to SP; Wizard records
-  commonly use that field for MP.
-- [ ] Approve SP costs for Concentrated Magic Arrow I-III, then enable and test learning/ranking.
+- [x] Define the datapack-backed BRPG Skill Point tier policy. Generic MCP `cost` is never mapped
+  to SP; Wizard records commonly use that field for MP.
+- [x] Approve SP costs for Concentrated Magic Arrow I-III and enable the production catalog entry.
+- [ ] Run its operator acceptance path; normal learning remains gated by unfinished Magic Arrow I.
 - [ ] Run Concentrated Magic Arrow client acceptance and adjust provisional range/timing only from play feel.
 - [ ] Finish Fireball rejection-path acceptance: insufficient MP, cooldown, missing/expired link, relog.
 - [ ] Audit and implement Multiple Magic Arrows, including cooldown-recast damage.

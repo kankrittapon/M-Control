@@ -22,6 +22,14 @@ final class SkillDebugVisualizer {
                     context.groundPosition() == null ? end : context.groundPosition(), hitRadius(skill, hit));
             case ENTITY_TARGETED -> line(level, origin,
                     targets.isEmpty() ? end : targets.iterator().next().getEyePosition(), 0.4);
+            case CHAIN -> {
+                Vec3 previous = origin;
+                for (LivingEntity target : targets) {
+                    Vec3 next = target.getEyePosition();
+                    line(level, previous, next, 0.25);
+                    previous = next;
+                }
+            }
             case MOVEMENT -> line(level, context.caster().position(),
                     context.caster().position().add(context.direction().scale(skill.range())), 0.2);
         }

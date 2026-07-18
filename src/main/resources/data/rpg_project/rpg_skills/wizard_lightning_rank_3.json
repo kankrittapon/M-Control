@@ -1,0 +1,14 @@
+{
+  "skill_id": "rpg_project:wizard_lightning", "class": "wizard", "rank": 3,
+  "targeting": "ground_aoe", "weapons": {"weapon_set": "main", "main": true, "sub": true},
+  "resource_type": "mp", "resource_cost": 40, "cooldown_ticks": 120,
+  "cast_ticks": 10, "recovery_ticks": 5, "movement_policy": "rotate_only",
+  "facing_policy": "aim_on_cast", "turn_speed": 60.0, "transitions": {},
+  "range": 20.0, "radius": 3.0,
+  "cooldown_recast": {"enabled": true, "damage_multiplier": 0.50, "allow_critical": true, "allow_special_attacks": true, "allow_crowd_control": false, "allow_smash": false, "allow_statuses": true, "allow_resources": false, "allow_protection": false},
+  "hits": [
+    {"timing_tick": 7, "impact_shape": "circle", "radius": 3.0, "max_targets": 10, "coefficient": 1.1221, "power_type": "magic", "crowd_control": "stun", "special_attacks": ["down_attack"], "statuses": [{"type": "slow", "duration_ticks": 100, "potency": 0.20, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]},
+    {"timing_tick": 8, "impact_shape": "circle", "radius": 3.0, "max_targets": 10, "coefficient": 1.1221, "power_type": "magic", "special_attacks": ["down_attack"], "statuses": [{"type": "slow", "duration_ticks": 100, "potency": 0.20, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]},
+    {"timing_tick": 9, "impact_shape": "circle", "radius": 3.0, "max_targets": 10, "coefficient": 1.1221, "power_type": "magic", "special_attacks": ["down_attack"], "statuses": [{"type": "slow", "duration_ticks": 100, "potency": 0.20, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]}
+  ]
+}

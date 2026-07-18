@@ -12,6 +12,7 @@ import com.zexqm.rpgproject.rpg.combat.SmashResolver;
 import com.zexqm.rpgproject.rpg.status.RpgStatusService;
 import com.zexqm.rpgproject.network.RpgNetwork;
 import com.zexqm.rpgproject.network.SyncManaPacket;
+import com.zexqm.rpgproject.network.SyncPlayerFacingPacket;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -51,16 +52,8 @@ public final class SkillRuntime {
             return result(player, skillId, SkillCastResult.WRONG_WEAPON, "requirements=" + skill.weapons());
         if (PrimaryResourceType.forClass(data.rpgClass()) != skill.resourceType())
             return result(player, skillId, SkillCastResult.WRONG_RESOURCE, "required=" + skill.resourceType());
-        if (!transitioning && data.actionState() == SkillActionState.SHEATHED) {
-            if (!validTarget(skill, context))
-                return result(player, skillId, SkillCastResult.INVALID_TARGET, "auto-draw target validation");
-            if (!data.requestToggleDraw(SkillRuntimeConfig.values().drawTicks(),
-                    SkillRuntimeConfig.values().sheatheTicks()))
-                return result(player, skillId, SkillCastResult.INVALID_STATE, "draw rejected");
-            PENDING.put(player.getUUID(), new PendingCast(skillId, context));
-            return result(player, skillId, SkillCastResult.STARTED, "queued auto-draw");
-        }
-        if (!transitioning && data.actionState() != SkillActionState.READY)
+        boolean needsAutoDraw = !transitioning && data.actionState() == SkillActionState.SHEATHED;
+        if (!transitioning && !needsAutoDraw && data.actionState() != SkillActionState.READY)
             return result(player, skillId, SkillCastResult.INVALID_STATE, "action=" + data.actionState());
         long gameTime = player.serverLevel().getServer().overworld().getGameTime();
         SkillLinkState linkState = LINKS.computeIfAbsent(player.getUUID(), ignored -> new SkillLinkState());
@@ -83,12 +76,29 @@ public final class SkillRuntime {
         if (mana == null || mana.getMana() < skill.resourceCost() || data.stamina() < skill.staminaCost())
             return result(player, skillId, SkillCastResult.INSUFFICIENT_RESOURCE,
                     "primary=" + (mana == null ? "missing" : mana.getMana()) + " stamina=" + data.stamina());
-        if (!validTarget(skill, context))
+        // A required impact anchor was produced and range-validated by the server-side source skill.
+        // Revalidating it from the caster's current position would make movement invalidate follow-ups.
+        if (!skill.links().useRequiredAnchor() && !validTarget(skill, context))
             return result(player, skillId, SkillCastResult.INVALID_TARGET, "range/direction/entity");
+        if (needsAutoDraw) {
+            if (!data.requestToggleDraw(SkillRuntimeConfig.values().drawTicks(),
+                    SkillRuntimeConfig.values().sheatheTicks()))
+                return result(player, skillId, SkillCastResult.INVALID_STATE, "draw rejected");
+            PENDING.put(player.getUUID(), new PendingCast(skillId, context));
+            return result(player, skillId, SkillCastResult.STARTED, "queued auto-draw after validation");
+        }
         if (transitioning && !transitionTo(player, skill))
             return result(player, skillId, SkillCastResult.INVALID_STATE, "transition rejected");
 
         mana.spend(skill.resourceCost());
+        int castRecovery = mana.restore((int) Math.floor(
+                mana.getMaxMana() * skill.castMpRecoveryPercent() + 1.0e-9));
+        if (castRecovery > 0) {
+            RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                    new SyncManaPacket(mana.getMana(), mana.getMaxMana()));
+            RpgProject.LOGGER.info("[RPG Skill] cast-resource player={} skill={} recovered={} current={} max={}",
+                    player.getScoreboardName(), skill.id(), castRecovery, mana.getMana(), mana.getMaxMana());
+        }
         data.spendStamina(skill.staminaCost());
         if (skill.links().consumeRequiredOnCastStart()) {
             linkState.consume(skill.links().requires(), gameTime);
@@ -136,7 +146,7 @@ public final class SkillRuntime {
             return true;
         }
         if (!active.recovering) {
-            if (active.skill.facingPolicy() == FacingPolicy.TRACK_AIM_UNTIL_RELEASE
+            if (active.skill.facingPolicy() != FacingPolicy.NONE
                     && active.tick <= firstHitTick(active.skill)) {
                 updateFacing(player, active.skill, active.context);
             }
@@ -227,6 +237,8 @@ public final class SkillRuntime {
         player.setYRot(yaw);
         player.setYHeadRot(yaw);
         player.setYBodyRot(yaw);
+        RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new SyncPlayerFacingPacket(yaw));
     }
 
     public static void clearTransient(ServerPlayer player) {
@@ -266,17 +278,19 @@ public final class SkillRuntime {
         SkillDefinition.CooldownRecastPolicy recast = skill.cooldownRecast();
         boolean recoveryApplied = false;
         boolean successfulHit = false;
+        int targetIndex = 0;
         for (var target : targets) {
+            double targetMultiplier = hit.targetDamageMultiplier(targetIndex++);
             var result = RpgCombatService.apply(new RpgDamageContext(context.caster(), target, context.origin(),
-                    hit.baseDamage(), hit.powerType(), hit.coefficient() * (cooldownRecast
+                    hit.baseDamage(), hit.powerType(), hit.coefficient() * targetMultiplier * (cooldownRecast
                     ? recast.damageMultiplier() : 1.0), true,
                     !cooldownRecast || recast.allowCritical(),
                     hit.hitChanceBonus(), hit.criticalChanceBonus(),
                     cooldownRecast && !recast.allowCrowdControl() ? null : hit.crowdControl(),
                     cooldownRecast && !recast.allowSpecialAttacks() ? java.util.Set.of() : hit.specialAttacks()));
-            RpgProject.LOGGER.info("[RPG Skill] damage skill={} target={}#{} outcome={} damage={} specials={} cc={}",
-                    skill.id(), target.getType().toShortString(), target.getId(), result.outcome(),
-                    result.damage(), result.specialAttacks(), result.crowdControl());
+            RpgProject.LOGGER.info("[RPG Skill] damage skill={} target={}#{} targetMultiplier={} outcome={} damage={} specials={} cc={}",
+                    skill.id(), target.getType().toShortString(), target.getId(), targetMultiplier,
+                    result.outcome(), result.damage(), result.specialAttacks(), result.crowdControl());
             if (result.outcome() != com.zexqm.rpgproject.rpg.combat.RpgDamageResult.Outcome.HIT) continue;
             successfulHit = true;
             var casterMana = context.caster().getCapability(ManaProvider.MANA).orElse(null);
@@ -370,6 +384,20 @@ public final class SkillRuntime {
             var entity = playerLevel(context).getEntity(context.targetEntityId());
             return entity instanceof net.minecraft.world.entity.LivingEntity living && living.isAlive()
                     && living != context.caster() && living.distanceToSqr(context.caster()) <= skill.range() * skill.range();
+        }
+        if (skill.targeting() == SkillTargetingType.CHAIN) {
+            if (context.targetEntityId() == null) return false;
+            var entity = playerLevel(context).getEntity(context.targetEntityId());
+            if (!(entity instanceof net.minecraft.world.entity.LivingEntity living) || !living.isAlive()
+                    || living == context.caster()) return false;
+            net.minecraft.world.phys.Vec3 targetDirection = living.getBoundingBox().getCenter()
+                    .subtract(context.origin());
+            if (targetDirection.lengthSqr() > skill.range() * skill.range()
+                    || targetDirection.lengthSqr() < 1.0E-6D) return false;
+            // Detached third-person camera rays are shoulder-offset from the server eye position.
+            // Validate the transient hovered entity without creating selected-target fallback.
+            return targetDirection.normalize().dot(context.direction()) >= 0.85D
+                    && context.caster().hasLineOfSight(living);
         }
         if (skill.targeting() == SkillTargetingType.GROUND_AOE
                 || skill.targeting() == SkillTargetingType.CIRCLE) {

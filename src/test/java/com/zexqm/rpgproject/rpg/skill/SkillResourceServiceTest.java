@@ -48,6 +48,19 @@ class SkillResourceServiceTest {
                 () -> new SkillDefinition.ResourcePayload(1.01, 0, 0, true));
     }
 
+    @Test
+    void settingManaRestartsTheRegenerationInterval() {
+        Mana mana = manaAt(100, 20);
+        for (int tick = 0; tick < 19; tick++) mana.tickRegen();
+
+        mana.setMana(29);
+        for (int tick = 0; tick < 19; tick++) mana.tickRegen();
+        assertEquals(29, mana.getMana());
+
+        mana.tickRegen();
+        assertEquals(34, mana.getMana());
+    }
+
     private static Mana manaAt(int maximum, int current) {
         Mana mana = new Mana();
         mana.setMaxMana(maximum);
