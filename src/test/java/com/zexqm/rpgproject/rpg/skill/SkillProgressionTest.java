@@ -248,16 +248,64 @@ class SkillProgressionTest {
                     assertTrue(parsed.playable());
                     assertEquals(List.of(25, 40, 60, 80), parsed.ranks().stream()
                             .map(SkillRankDefinition::skillPointCost).toList());
+                } else if (id.getPath().equals("wizard_meteor_shower")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(100, 150, 250), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                } else if (id.getPath().equals("wizard_freeze")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(10, 20, 30, 40, 50), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                } else if (id.getPath().equals("wizard_frigid_fog")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(25, 40, 60, 80), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertEquals(new ResourceLocation("rpg_project", "wizard_freeze"),
+                            parsed.prerequisites().get(0).skillId());
+                    assertEquals(1, parsed.prerequisites().get(0).minimumRank());
+                } else if (id.getPath().equals("wizard_blizzard")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(50, 75, 100, 125), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertEquals(new ResourceLocation("rpg_project", "wizard_freeze"),
+                            parsed.prerequisites().get(0).skillId());
+                } else if (id.getPath().equals("wizard_lightning_storm")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(25, 40, 60), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertEquals(new ResourceLocation("rpg_project", "wizard_lightning_chain"),
+                            parsed.prerequisites().get(0).skillId());
+                } else if (id.getPath().equals("wizard_residual_lightning")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(25, 40, 60, 80), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertEquals(new ResourceLocation("rpg_project", "wizard_lightning"),
+                            parsed.prerequisites().get(0).skillId());
+                } else if (id.getPath().equals("wizard_earthquake")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(50, 75, 100, 125), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_earth_s_response")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(10, 20, 30), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_staff_attack")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(0, 5, 7, 10, 12, 14, 19, 23, 24, 25), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
                 } else {
                     assertFalse(parsed.playable(), id.toString());
                 }
             }
-            assertEquals(7, playable);
+            assertEquals(16, playable);
         }
     }
 
     @Test
-    void phaseFivePlayableSkillPointBudgetTotalsSevenHundredSeventyFive() throws Exception {
+    void playableSkillPointBudgetIncludesPhaseSixFreeze() throws Exception {
         assertEquals(100, totalSkillPointCost("wizard_fireball"));
         assertEquals(225, totalSkillPointCost("wizard_fireball_explosion"));
         assertEquals(125, totalSkillPointCost("wizard_concentrated_magic_arrow"));
@@ -265,13 +313,31 @@ class SkillProgressionTest {
         assertEquals(125, totalSkillPointCost("wizard_mana_absorption"));
         assertEquals(150, totalSkillPointCost("wizard_lightning"));
         assertEquals(205, totalSkillPointCost("wizard_lightning_chain"));
-        assertEquals(980, totalSkillPointCost("wizard_fireball")
+        assertEquals(500, totalSkillPointCost("wizard_meteor_shower"));
+        assertEquals(150, totalSkillPointCost("wizard_freeze"));
+        assertEquals(205, totalSkillPointCost("wizard_frigid_fog"));
+        assertEquals(350, totalSkillPointCost("wizard_blizzard"));
+        assertEquals(125, totalSkillPointCost("wizard_lightning_storm"));
+        assertEquals(205, totalSkillPointCost("wizard_residual_lightning"));
+        assertEquals(350, totalSkillPointCost("wizard_earthquake"));
+        assertEquals(60, totalSkillPointCost("wizard_earth_s_response"));
+        assertEquals(139, totalSkillPointCost("wizard_staff_attack"));
+        assertEquals(3064, totalSkillPointCost("wizard_fireball")
                 + totalSkillPointCost("wizard_fireball_explosion")
                 + totalSkillPointCost("wizard_concentrated_magic_arrow")
                 + totalSkillPointCost("wizard_multiple_magic_arrows")
                 + totalSkillPointCost("wizard_mana_absorption")
                 + totalSkillPointCost("wizard_lightning")
-                + totalSkillPointCost("wizard_lightning_chain"));
+                + totalSkillPointCost("wizard_lightning_chain")
+                + totalSkillPointCost("wizard_meteor_shower")
+                + totalSkillPointCost("wizard_freeze")
+                + totalSkillPointCost("wizard_frigid_fog")
+                + totalSkillPointCost("wizard_blizzard")
+                + totalSkillPointCost("wizard_lightning_storm")
+                + totalSkillPointCost("wizard_residual_lightning")
+                + totalSkillPointCost("wizard_earthquake")
+                + totalSkillPointCost("wizard_earth_s_response")
+                + totalSkillPointCost("wizard_staff_attack"));
     }
 
     @Test

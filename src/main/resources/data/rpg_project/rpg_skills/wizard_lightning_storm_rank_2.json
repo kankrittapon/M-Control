@@ -1,0 +1,137 @@
+{
+  "skill_id": "rpg_project:wizard_lightning_storm",
+  "class": "wizard",
+  "rank": 2,
+  "targeting": "self_aoe",
+  "weapons": {
+    "weapon_set": "main",
+    "main": true,
+    "sub": true
+  },
+  "resource_type": "mp",
+  "resource_cost": 125,
+  "cooldown_ticks": 260,
+  "cast_ticks": 17,
+  "recovery_ticks": 5,
+  "movement_policy": "rotate_only",
+  "facing_policy": "none",
+  "radius": 6.5,
+  "hits": [
+    {
+      "timing_tick": 4,
+      "radius": 6.5,
+      "max_targets": 5,
+      "coefficient": 2.161,
+      "power_type": "magic",
+      "crowd_control": "stiffness",
+      "critical_chance_bonus": 0.67,
+      "hit_chance_bonus": 0.1,
+      "statuses": [
+        {
+          "type": "slow",
+          "duration_ticks": 100,
+          "potency": 0.2,
+          "max_stacks": 1,
+          "stacking": "refresh",
+          "allowed_profiles": [
+            "normal",
+            "elite",
+            "boss"
+          ]
+        }
+      ]
+    },
+    {
+      "timing_tick": 7,
+      "radius": 6.5,
+      "max_targets": 5,
+      "coefficient": 2.161,
+      "power_type": "magic",
+      "critical_chance_bonus": 0.67,
+      "hit_chance_bonus": 0.1,
+      "statuses": [
+        {
+          "type": "slow",
+          "duration_ticks": 100,
+          "potency": 0.2,
+          "max_stacks": 1,
+          "stacking": "refresh",
+          "allowed_profiles": [
+            "normal",
+            "elite",
+            "boss"
+          ]
+        }
+      ]
+    },
+    {
+      "timing_tick": 10,
+      "radius": 6.5,
+      "max_targets": 5,
+      "coefficient": 2.161,
+      "power_type": "magic",
+      "critical_chance_bonus": 0.67,
+      "hit_chance_bonus": 0.1,
+      "statuses": [
+        {
+          "type": "slow",
+          "duration_ticks": 100,
+          "potency": 0.2,
+          "max_stacks": 1,
+          "stacking": "refresh",
+          "allowed_profiles": [
+            "normal",
+            "elite",
+            "boss"
+          ]
+        }
+      ]
+    },
+    {
+      "timing_tick": 13,
+      "radius": 6.5,
+      "max_targets": 5,
+      "coefficient": 2.161,
+      "power_type": "magic",
+      "critical_chance_bonus": 0.67,
+      "hit_chance_bonus": 0.1,
+      "statuses": [
+        {
+          "type": "slow",
+          "duration_ticks": 100,
+          "potency": 0.2,
+          "max_stacks": 1,
+          "stacking": "refresh",
+          "allowed_profiles": [
+            "normal",
+            "elite",
+            "boss"
+          ]
+        }
+      ]
+    },
+    {
+      "timing_tick": 16,
+      "radius": 6.5,
+      "max_targets": 5,
+      "coefficient": 2.161,
+      "power_type": "magic",
+      "critical_chance_bonus": 0.67,
+      "hit_chance_bonus": 0.1,
+      "statuses": [
+        {
+          "type": "slow",
+          "duration_ticks": 100,
+          "potency": 0.2,
+          "max_stacks": 1,
+          "stacking": "refresh",
+          "allowed_profiles": [
+            "normal",
+            "elite",
+            "boss"
+          ]
+        }
+      ]
+    }
+  ]
+}

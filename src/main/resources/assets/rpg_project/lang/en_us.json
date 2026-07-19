@@ -7,6 +7,7 @@
   "key.categories.rpg_project": "Minecraft RPG Project",
   "key.rpg_project.toggle_view_mode": "Toggle RPG View Mode",
   "key.rpg_project.toggle_mouse_movement": "Hold Mouse Movement Mode",
+  "key.rpg_project.toggle_debug_hud": "Toggle RPG Debug HUD",
   "message.rpg_project.target.selected": "Target: %s",
   "message.rpg_project.target.cleared": "Target cleared",
   "message.rpg_project.mana.not_enough": "Not enough mana",

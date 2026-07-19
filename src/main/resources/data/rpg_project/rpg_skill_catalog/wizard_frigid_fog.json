@@ -5,8 +5,9 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/10.Frigid Fog.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "sp_tier": "core",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,
@@ -25,6 +26,11 @@
       "required_level": 42
     }
   ],
-  "prerequisites": [],
+  "prerequisites": [
+    {
+      "skill": "rpg_project:wizard_freeze",
+      "rank": 1
+    }
+  ],
   "mutually_exclusive": []
 }

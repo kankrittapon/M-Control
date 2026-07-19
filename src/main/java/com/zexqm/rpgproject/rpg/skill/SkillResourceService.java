@@ -15,7 +15,7 @@ public final class SkillResourceService {
 
         int transferred = (int) Math.floor(drained * payload.drainTransferRatio());
         int requestedRecovery = allowRecovery
-                ? percentOf(caster.getMaxMana(), payload.maxMpRecoveryPercent()) : 0;
+                ? percentOf(caster.getMaxMana(), payload.maxMpRecoveryPercent()) + payload.flatMpRecovery() : 0;
         int recovered = caster.restore(requestedRecovery + transferred);
         int appliedTransfer = Math.min(transferred, recovered);
 

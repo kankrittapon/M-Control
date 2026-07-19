@@ -11,6 +11,10 @@ public final class ClientCombatState {
     private static CrowdControlType activeCc;
     private static int activeTicks;
     private static boolean casting;
+    private static int frontGuardTicks;
+    private static int superArmorTicks;
+    private static int iframeTicks;
+    private static int grabImmuneTicks;
 
     public static void apply(SyncCombatStatePacket packet) {
         guard = packet.guard();
@@ -20,12 +24,20 @@ public final class ClientCombatState {
         activeCc = packet.activeCc();
         activeTicks = packet.activeTicks();
         casting = packet.casting();
+        frontGuardTicks = packet.frontGuardTicks();
+        superArmorTicks = packet.superArmorTicks();
+        iframeTicks = packet.iframeTicks();
+        grabImmuneTicks = packet.grabImmuneTicks();
     }
 
     public static void tick() {
         if (immunityTicks > 0) immunityTicks--;
         if (activeTicks > 0) activeTicks--;
         if (activeTicks == 0 && activeCc != CrowdControlType.FLOAT) activeCc = null;
+        if (frontGuardTicks > 0) frontGuardTicks--;
+        if (superArmorTicks > 0) superArmorTicks--;
+        if (iframeTicks > 0) iframeTicks--;
+        if (grabImmuneTicks > 0) grabImmuneTicks--;
     }
 
     public static boolean actionLocked() {
@@ -38,6 +50,11 @@ public final class ClientCombatState {
     public static int immunityTicks() { return immunityTicks; }
     public static CrowdControlType activeCc() { return activeCc; }
     public static boolean casting() { return casting; }
+    public static int frontGuardTicks() { return frontGuardTicks; }
+    public static int superArmorTicks() { return superArmorTicks; }
+    public static int iframeTicks() { return iframeTicks; }
+    public static int grabImmuneTicks() { return grabImmuneTicks; }
+    public static int activeTicks() { return activeTicks; }
 
     private ClientCombatState() {}
 }

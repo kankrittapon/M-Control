@@ -9,7 +9,8 @@ import java.util.function.Supplier;
 
 public record SyncCombatStatePacket(double guard, double maximumGuard, double ccPoints,
                                     int immunityTicks, CrowdControlType activeCc,
-                                    int activeTicks, boolean casting) {
+                                    int activeTicks, boolean casting, int frontGuardTicks,
+                                    int superArmorTicks, int iframeTicks, int grabImmuneTicks) {
     public static void encode(SyncCombatStatePacket packet, FriendlyByteBuf buffer) {
         buffer.writeDouble(packet.guard);
         buffer.writeDouble(packet.maximumGuard);
@@ -19,6 +20,10 @@ public record SyncCombatStatePacket(double guard, double maximumGuard, double cc
         if (packet.activeCc != null) buffer.writeEnum(packet.activeCc);
         buffer.writeVarInt(packet.activeTicks);
         buffer.writeBoolean(packet.casting);
+        buffer.writeVarInt(packet.frontGuardTicks);
+        buffer.writeVarInt(packet.superArmorTicks);
+        buffer.writeVarInt(packet.iframeTicks);
+        buffer.writeVarInt(packet.grabImmuneTicks);
     }
 
     public static SyncCombatStatePacket decode(FriendlyByteBuf buffer) {
@@ -28,7 +33,8 @@ public record SyncCombatStatePacket(double guard, double maximumGuard, double cc
         int immunityTicks = buffer.readVarInt();
         CrowdControlType activeCc = buffer.readBoolean() ? buffer.readEnum(CrowdControlType.class) : null;
         return new SyncCombatStatePacket(guard, maximumGuard, ccPoints, immunityTicks,
-                activeCc, buffer.readVarInt(), buffer.readBoolean());
+                activeCc, buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(),
+                buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt());
     }
 
     public static void handle(SyncCombatStatePacket packet, Supplier<NetworkEvent.Context> supplier) {

@@ -1,0 +1,16 @@
+{
+  "skill_id": "rpg_project:wizard_earthquake", "class": "wizard", "rank": 4,
+  "targeting": "self_aoe", "weapons": {"weapon_set": "main", "main": true, "sub": true},
+  "resource_type": "mp", "resource_cost": 220, "cooldown_ticks": 1200,
+  "cast_ticks": 12, "recovery_ticks": 6, "movement_policy": "locked", "facing_policy": "none",
+  "transitions": {"movement_cancel_from_tick": 0, "movement_until_first_hit": true, "skill_cancel_from_tick": 0, "skill_until_first_hit": true},
+  "radius": 6.0, "protection_windows": [{"type": "super_armor", "from_tick": 0, "to_tick": 9}],
+  "hits": [
+    {"timing_tick": 4, "radius": 6.0, "max_targets": 7, "coefficient": 4.5398, "power_type": "magic", "crowd_control": "bound", "player_crowd_control": "stiffness", "pull_strength": 0.18, "special_attacks": ["down_attack"], "resources": {"flat_mp_recovery": 15}},
+    {"timing_tick": 5, "radius": 6.0, "max_targets": 7, "coefficient": 4.5398, "power_type": "magic", "pull_strength": 0.18, "special_attacks": ["down_attack"], "resources": {"flat_mp_recovery": 15}},
+    {"timing_tick": 6, "radius": 6.0, "max_targets": 7, "coefficient": 4.5398, "power_type": "magic", "pull_strength": 0.18, "special_attacks": ["down_attack"], "resources": {"flat_mp_recovery": 15}},
+    {"timing_tick": 7, "radius": 6.0, "max_targets": 7, "coefficient": 4.5398, "power_type": "magic", "pull_strength": 0.18, "special_attacks": ["down_attack"], "resources": {"flat_mp_recovery": 15}},
+    {"timing_tick": 8, "radius": 6.0, "max_targets": 7, "coefficient": 4.5398, "power_type": "magic", "pull_strength": 0.18, "special_attacks": ["down_attack"], "resources": {"flat_mp_recovery": 15}},
+    {"timing_tick": 9, "radius": 6.0, "max_targets": 7, "coefficient": 4.5398, "power_type": "magic", "pull_strength": 0.18, "special_attacks": ["down_attack"], "resources": {"flat_mp_recovery": 15}}
+  ]
+}

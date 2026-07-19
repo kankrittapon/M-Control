@@ -35,19 +35,36 @@ public final class SkillRuntimeConfig extends SimpleJsonResourceReloadListener {
                     GsonHelper.getAsDouble(damage, "max_per_hit_coefficient", 5.0),
                     GsonHelper.getAsDouble(damage, "max_total_coefficient", 20.0),
                     GsonHelper.getAsInt(damage, "max_source_hits", 100));
-            current = new Values(draw, sheathe, bdoDamage);
+            JsonObject observability = GsonHelper.getAsJsonObject(root, "observability", new JsonObject());
+            ObservabilityValues diagnostics = new ObservabilityValues(
+                    GsonHelper.getAsBoolean(observability, "log_hit_performance", true),
+                    GsonHelper.getAsBoolean(observability, "log_per_target_results", true),
+                    GsonHelper.getAsLong(observability, "slow_resolver_micros", 1000));
+            current = new Values(draw, sheathe, bdoDamage, diagnostics);
         } catch (RuntimeException exception) {
             RpgProject.LOGGER.error("Invalid skill_runtime.json; retaining last valid values", exception);
         }
     }
 
-    public record Values(int drawTicks, int sheatheTicks, BdoDamageValues bdoDamage) {
+    public record Values(int drawTicks, int sheatheTicks, BdoDamageValues bdoDamage,
+                         ObservabilityValues observability) {
         public Values {
-            if (drawTicks < 1 || sheatheTicks < 1 || bdoDamage == null)
+            if (drawTicks < 1 || sheatheTicks < 1 || bdoDamage == null || observability == null)
                 throw new IllegalArgumentException("Invalid skill runtime values");
         }
 
-        public static Values defaults() { return new Values(8, 6, BdoDamageValues.defaults()); }
+        public static Values defaults() {
+            return new Values(8, 6, BdoDamageValues.defaults(), ObservabilityValues.defaults());
+        }
+    }
+
+    public record ObservabilityValues(boolean logHitPerformance, boolean logPerTargetResults,
+                                      long slowResolverMicros) {
+        public ObservabilityValues {
+            if (slowResolverMicros < 0) throw new IllegalArgumentException("Invalid resolver threshold");
+        }
+
+        public static ObservabilityValues defaults() { return new ObservabilityValues(true, true, 1000); }
     }
 
     public record BdoDamageValues(double referencePercent, double exponent, double multiplier,

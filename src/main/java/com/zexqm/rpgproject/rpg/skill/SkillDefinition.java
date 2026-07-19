@@ -14,7 +14,7 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.List;
 import java.util.Set;
 
-public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass rpgClass,
+public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean innate, RpgClass rpgClass,
                               Specialization specialization, int rank,
                               SkillTargetingType targeting, SkillWeaponRequirement weapons,
                               PrimaryResourceType resourceType, int resourceCost, double staminaCost,
@@ -25,14 +25,17 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
                               CooldownRecastPolicy cooldownRecast, SkillLinkPolicy links,
                               TransitionPolicy transitions, double projectileSpeed,
                               FacingPolicy facingPolicy, double turnSpeed,
-                              double castMpRecoveryPercent) {
+                              double castMpRecoveryPercent, CasterMovementType casterMovementType,
+                              double casterLateralDistance) {
     public SkillDefinition {
         if (id == null || targeting == null || weapons == null || resourceType == null
-                || movementPolicy == null || cancelPolicy == null) throw new IllegalArgumentException("Missing skill field");
+                || movementPolicy == null || cancelPolicy == null || casterMovementType == null)
+            throw new IllegalArgumentException("Missing skill field");
         if (rank < 0 || resourceCost < 0 || staminaCost < 0 || cooldownTicks < 0 || castTicks < 0
                 || recoveryTicks < 0 || range < 0 || radius < 0 || projectileSpeed < 0 || turnSpeed < 0
                 || !Double.isFinite(castMpRecoveryPercent) || castMpRecoveryPercent < 0
-                || castMpRecoveryPercent > 1)
+                || castMpRecoveryPercent > 1 || !Double.isFinite(casterLateralDistance)
+                || casterLateralDistance < 0)
             throw new IllegalArgumentException("Negative skill value");
         if (targeting == SkillTargetingType.AIM_PROJECTILE && projectileSpeed <= 0)
             throw new IllegalArgumentException("Aim projectile skills require projectile_speed");
@@ -51,12 +54,12 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
                            int recoveryTicks, MovementPolicy movementPolicy, CancelPolicy cancelPolicy,
                            double range, double radius, List<Hit> hits,
                            List<ProtectionWindow> protectionWindows) {
-        this(id, debugOnly, rpgClass, specialization, rank, targeting, weapons, resourceType,
+        this(id, debugOnly, false, rpgClass, specialization, rank, targeting, weapons, resourceType,
                 resourceCost, staminaCost, cooldownTicks, castTicks, recoveryTicks, movementPolicy,
                 cancelPolicy, range, radius, hits, protectionWindows, CooldownRecastPolicy.DISABLED,
                 SkillLinkPolicy.NONE, TransitionPolicy.fromLegacy(cancelPolicy),
                 targeting == SkillTargetingType.AIM_PROJECTILE ? 1.0 : 0.0,
-                FacingPolicy.NONE, 0.0, 0.0);
+                FacingPolicy.NONE, 0.0, 0.0, CasterMovementType.NONE, 0.0);
     }
 
     public record TransitionPolicy(int movementCancelFromTick, boolean movementUntilFirstHit,
@@ -119,6 +122,7 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
 
     public record Hit(int timingTick, double baseDamage, double coefficient, double radius,
                       RpgPowerType powerType, CrowdControlType crowdControl,
+                      CrowdControlType playerCrowdControl, double pullStrength,
                       Set<SpecialAttackType> specialAttacks, List<StatusPayload> statuses,
                       List<SmashPayload> smashes, ResourcePayload resources,
                       SkillImpactShape impactShape, int maxTargets,
@@ -128,6 +132,7 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
         public Hit {
             if (timingTick < 0 || baseDamage < 0 || coefficient < 0 || radius < 0
                     || maxTargets < 0 || !Double.isFinite(forwardOffset) || !Double.isFinite(rightOffset)
+                    || !Double.isFinite(pullStrength) || pullStrength < 0 || pullStrength > 1
                     || hitChanceBonus < 0 || hitChanceBonus > 1
                     || criticalChanceBonus < 0 || criticalChanceBonus > 1
                     || additionalTargetDamagePenalty < 0 || additionalTargetDamagePenalty > 1
@@ -146,7 +151,7 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
                    Set<SpecialAttackType> specialAttacks, List<StatusPayload> statuses,
                    List<SmashPayload> smashes) {
             this(timingTick, baseDamage, coefficient, radius, powerType, crowdControl,
-                    specialAttacks, statuses, smashes, ResourcePayload.NONE,
+                    null, 0, specialAttacks, statuses, smashes, ResourcePayload.NONE,
                     SkillImpactShape.AUTO, 0, 0, 0, 0, 0, 0, 1);
         }
 
@@ -156,14 +161,21 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, RpgClass r
         }
     }
 
-    public record ResourcePayload(double maxMpRecoveryPercent, double targetMaxResourceDrainPercent,
+    public record ResourcePayload(double maxMpRecoveryPercent, int flatMpRecovery,
+                                  double targetMaxResourceDrainPercent,
                                   double drainTransferRatio, boolean recoverOncePerHitWindow) {
-        public static final ResourcePayload NONE = new ResourcePayload(0, 0, 0, true);
+        public static final ResourcePayload NONE = new ResourcePayload(0, 0, 0, 0, true);
 
         public ResourcePayload {
-            if (!percent(maxMpRecoveryPercent) || !percent(targetMaxResourceDrainPercent)
+            if (!percent(maxMpRecoveryPercent) || flatMpRecovery < 0 || !percent(targetMaxResourceDrainPercent)
                     || !percent(drainTransferRatio))
                 throw new IllegalArgumentException("Resource payload percentages must be between 0 and 1");
+        }
+
+        public ResourcePayload(double maxMpRecoveryPercent, double targetMaxResourceDrainPercent,
+                               double drainTransferRatio, boolean recoverOncePerHitWindow) {
+            this(maxMpRecoveryPercent, 0, targetMaxResourceDrainPercent, drainTransferRatio,
+                    recoverOncePerHitWindow);
         }
 
         private static boolean percent(double value) {

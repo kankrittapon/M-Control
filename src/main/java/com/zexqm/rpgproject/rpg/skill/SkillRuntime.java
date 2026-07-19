@@ -16,6 +16,7 @@ import com.zexqm.rpgproject.network.SyncPlayerFacingPacket;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,7 +36,10 @@ public final class SkillRuntime {
         if (data == null || combat == null) return result(player, skillId, SkillCastResult.INVALID_STATE, "capability missing");
         SkillDefinition firstRank = SkillRegistry.get(skillId);
         boolean debug = firstRank != null && firstRank.debugOnly();
-        int learnedRank = debug ? firstRank.rank() : data.skillProgress().rank(skillId);
+        int progressionRank = data.skillProgress().rank(skillId);
+        int learnedRank = debug ? firstRank.rank()
+                : firstRank != null && firstRank.innate() ? Math.max(firstRank.rank(), progressionRank)
+                : progressionRank;
         SkillDefinition skill = SkillRegistry.get(skillId, learnedRank);
         if (skill == null) return result(player, skillId, learnedRank <= 0
                 ? SkillCastResult.NOT_LEARNED : SkillCastResult.UNKNOWN_SKILL, "rank=" + learnedRank + " not registered");
@@ -66,7 +70,7 @@ public final class SkillRuntime {
                 return result(player, skillId, SkillCastResult.INVALID_TARGET,
                         "required link has no resolved impact anchor");
             context = new SkillExecutionContext(player, player.getEyePosition(), context.direction(),
-                    context.targetEntityId(), anchor);
+                    context.targetEntityId(), anchor, context.lateralSide());
         }
         boolean cooldownRecast = !data.cooldownReady(skill.id(), gameTime);
         if (cooldownRecast && !skill.cooldownRecast().enabled())
@@ -109,7 +113,7 @@ public final class SkillRuntime {
         if (!cooldownRecast) data.startCooldown(skill.id(), gameTime + skill.cooldownTicks());
         data.startCast(skill.castTicks());
         combat.setCasting(true);
-        ACTIVE.put(player.getUUID(), new ActiveCast(skill, context, cooldownRecast, 0, false));
+        ACTIVE.put(player.getUUID(), new ActiveCast(skill, context, cooldownRecast, 0, false, 0, false));
         if (skill.facingPolicy() == FacingPolicy.AIM_ON_CAST
                 || skill.facingPolicy() == FacingPolicy.TARGET_ON_CAST) {
             updateFacing(player, skill, context);
@@ -131,7 +135,8 @@ public final class SkillRuntime {
             if (data.actionState() == SkillActionState.READY) {
                 PENDING.remove(player.getUUID());
                 SkillExecutionContext refreshed = new SkillExecutionContext(player, player.getEyePosition(),
-                        pending.context.direction(), pending.context.targetEntityId(), pending.context.groundPosition());
+                        pending.context.direction(), pending.context.targetEntityId(), pending.context.groundPosition(),
+                        pending.context.lateralSide());
                 cast(player, pending.skillId, refreshed);
                 return true;
             }
@@ -139,6 +144,14 @@ public final class SkillRuntime {
         }
         ActiveCast active = ACTIVE.get(player.getUUID());
         if (active == null) return projectileActive;
+        active.elapsedTicks++;
+        int timeoutTicks = active.skill.castTicks() + active.skill.recoveryTicks() + 100;
+        if (active.elapsedTicks > timeoutTicks) {
+            RpgProject.LOGGER.warn("[RPG Skill] Force-cleared stale cast player={} skill={} elapsed={} timeout={}",
+                    player.getUUID(), active.skill.id(), active.elapsedTicks, timeoutTicks);
+            cancel(player);
+            return true;
+        }
         RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
         RpgCombatState combat = player.getCapability(RpgCombatStateProvider.DATA).orElse(null);
         if (data == null || combat == null || combat.actionLocked()) {
@@ -146,6 +159,10 @@ public final class SkillRuntime {
             return true;
         }
         if (!active.recovering) {
+            if (!active.movementApplied) {
+                active.context = applyCasterMovement(player, active.skill, active.context);
+                active.movementApplied = true;
+            }
             if (active.skill.facingPolicy() != FacingPolicy.NONE
                     && active.tick <= firstHitTick(active.skill)) {
                 updateFacing(player, active.skill, active.context);
@@ -186,6 +203,34 @@ public final class SkillRuntime {
                 player.getScoreboardName(), active != null ? active.skill.id() : pending.skillId());
         player.getCapability(RpgCombatStateProvider.DATA).ifPresent(state -> state.setCasting(false));
         player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(RpgPlayerData::cancelAction);
+    }
+
+    private static SkillExecutionContext applyCasterMovement(ServerPlayer player, SkillDefinition skill,
+                                                              SkillExecutionContext context) {
+        if (skill.casterMovementType() != CasterMovementType.SIDE_HOP
+                || skill.casterLateralDistance() <= 0) return context;
+        int side = context.lateralSide();
+        if (side == 0) {
+            RpgProject.LOGGER.info("[RPG Skill] side-hop skipped player={} skill={} reason=missing_direction",
+                    player.getScoreboardName(), skill.id());
+            return context;
+        }
+        Vec3 forward = context.direction().multiply(1, 0, 1);
+        if (forward.lengthSqr() <= 1.0e-6) return context;
+        Vec3 right = new Vec3(-forward.z, 0, forward.x).normalize();
+        Vec3 before = player.position();
+        Vec3 requested = right.scale(skill.casterLateralDistance() * side);
+        player.move(net.minecraft.world.entity.MoverType.SELF, requested);
+        Vec3 actual = player.position().subtract(before);
+        player.setDeltaMovement(0, Math.max(player.getDeltaMovement().y, 0.12), 0);
+        player.hurtMarked = true;
+        player.connection.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+        RpgProject.LOGGER.info(
+                "[RPG Skill] side-hop player={} skill={} side={} requested={} actual={} collisionClipped={}",
+                player.getScoreboardName(), skill.id(), side, skill.casterLateralDistance(),
+                actual.horizontalDistance(), actual.horizontalDistance() + 1.0e-3 < requested.horizontalDistance());
+        return new SkillExecutionContext(player, player.getEyePosition(), context.direction(),
+                context.targetEntityId(), context.groundPosition(), side);
     }
 
     public static boolean requestCancel(ServerPlayer player, SkillCancelTrigger trigger) {
@@ -265,11 +310,26 @@ public final class SkillRuntime {
 
     private static void executeHit(SkillDefinition skill, SkillDefinition.Hit hit,
                                    SkillExecutionContext context, boolean cooldownRecast, long gameTime) {
-        var targets = SkillHitResolver.resolve(skill, hit, context);
+        var resolution = SkillHitResolver.resolveMeasured(skill, hit, context);
+        var targets = resolution.targets();
         RpgProject.LOGGER.info("[RPG Skill] hit-window player={} skill={} tick={} shape={} targets={}",
                 context.caster().getScoreboardName(), skill.id(), hit.timingTick(), skill.targeting(), targets.size());
+        var observability = SkillRuntimeConfig.values().observability();
+        if (observability.logHitPerformance()) {
+            long micros = resolution.elapsedNanos() / 1_000;
+            RpgProject.LOGGER.info("[RPG Skill Perf] skill={} tick={} candidates={} accepted={} resolverMicros={} slow={}",
+                    skill.id(), hit.timingTick(), resolution.candidateCount(), targets.size(), micros,
+                    micros >= observability.slowResolverMicros());
+        }
         SkillDebugVisualizer.show(skill, hit, context, targets);
         executeResolvedHit(skill, hit, context, cooldownRecast, gameTime, targets);
+        if (skill.links().grants() != null
+                && skill.links().grantTiming() == SkillLinkTiming.SUCCESSFUL_HIT) {
+            Vec3 anchor = context.groundPosition() != null
+                    ? context.groundPosition()
+                    : context.origin().add(context.direction().scale(skill.range()));
+            recordLinkAnchor(skill, context.caster(), anchor);
+        }
     }
 
     static void executeResolvedHit(SkillDefinition skill, SkillDefinition.Hit hit,
@@ -281,18 +341,31 @@ public final class SkillRuntime {
         int targetIndex = 0;
         for (var target : targets) {
             double targetMultiplier = hit.targetDamageMultiplier(targetIndex++);
+            var crowdControl = target instanceof net.minecraft.world.entity.player.Player
+                    && hit.playerCrowdControl() != null ? hit.playerCrowdControl() : hit.crowdControl();
             var result = RpgCombatService.apply(new RpgDamageContext(context.caster(), target, context.origin(),
                     hit.baseDamage(), hit.powerType(), hit.coefficient() * targetMultiplier * (cooldownRecast
                     ? recast.damageMultiplier() : 1.0), true,
                     !cooldownRecast || recast.allowCritical(),
                     hit.hitChanceBonus(), hit.criticalChanceBonus(),
-                    cooldownRecast && !recast.allowCrowdControl() ? null : hit.crowdControl(),
+                    cooldownRecast && !recast.allowCrowdControl() ? null : crowdControl,
                     cooldownRecast && !recast.allowSpecialAttacks() ? java.util.Set.of() : hit.specialAttacks()));
-            RpgProject.LOGGER.info("[RPG Skill] damage skill={} target={}#{} targetMultiplier={} outcome={} damage={} specials={} cc={}",
-                    skill.id(), target.getType().toShortString(), target.getId(), targetMultiplier,
-                    result.outcome(), result.damage(), result.specialAttacks(), result.crowdControl());
+            if (SkillRuntimeConfig.values().observability().logPerTargetResults())
+                RpgProject.LOGGER.info("[RPG Skill] damage skill={} target={}#{} targetMultiplier={} outcome={} damage={} specials={} cc={}",
+                        skill.id(), target.getType().toShortString(), target.getId(), targetMultiplier,
+                        result.outcome(), result.damage(), result.specialAttacks(), result.crowdControl());
             if (result.outcome() != com.zexqm.rpgproject.rpg.combat.RpgDamageResult.Outcome.HIT) continue;
             successfulHit = true;
+            if (hit.pullStrength() > 0 && !(target instanceof net.minecraft.world.entity.player.Player)
+                    && !com.zexqm.rpgproject.rpg.mob.MobControlProfiles.resolve(target).hardCcImmune()) {
+                net.minecraft.world.phys.Vec3 towardCaster = context.caster().position()
+                        .subtract(target.position()).multiply(1, 0, 1);
+                if (towardCaster.lengthSqr() > 1.0e-6) {
+                    net.minecraft.world.phys.Vec3 impulse = towardCaster.normalize().scale(hit.pullStrength());
+                    target.push(impulse.x, 0.04, impulse.z);
+                    target.hurtMarked = true;
+                }
+            }
             var casterMana = context.caster().getCapability(ManaProvider.MANA).orElse(null);
             var targetMana = target.getCapability(ManaProvider.MANA).orElse(null);
             boolean allowRecovery = !hit.resources().recoverOncePerHitWindow() || !recoveryApplied;
@@ -306,7 +379,8 @@ public final class SkillRuntime {
                     RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> targetPlayer),
                             new SyncManaPacket(targetMana.getMana(), targetMana.getMaxMana()));
                 if (resourceResult.status() != ResourceTransactionResult.Status.NO_EFFECT)
-                    RpgProject.LOGGER.info("[RPG Skill] resource skill={} target={}#{} result={} recovered={} drained={} transferred={}",
+                    if (SkillRuntimeConfig.values().observability().logPerTargetResults())
+                        RpgProject.LOGGER.info("[RPG Skill] resource skill={} target={}#{} result={} recovered={} drained={} transferred={}",
                             skill.id(), target.getType().toShortString(), target.getId(), resourceResult.status(),
                             resourceResult.recovered(), resourceResult.drained(), resourceResult.transferred());
             }
@@ -315,14 +389,16 @@ public final class SkillRuntime {
                 var statusResult = RpgStatusService.apply(context.caster(), target, status.type(), status.durationTicks(),
                         status.intervalTicks(), status.potency(), status.maxStacks(), status.stacking(),
                         status.allowedProfiles());
-                RpgProject.LOGGER.info("[RPG Skill] status skill={} target={}#{} type={} result={} duration={} potency={}",
+                if (SkillRuntimeConfig.values().observability().logPerTargetResults())
+                    RpgProject.LOGGER.info("[RPG Skill] status skill={} target={}#{} type={} result={} duration={} potency={}",
                         skill.id(), target.getType().toShortString(), target.getId(), status.type(), statusResult,
                         status.durationTicks(), status.potency());
             }
             for (SkillDefinition.SmashPayload smash : cooldownRecast && !recast.allowSmash()
                     ? java.util.List.<SkillDefinition.SmashPayload>of() : hit.smashes()) {
                 var smashResult = SmashResolver.apply(target, smash.type(), smash.chance(), context.origin());
-                RpgProject.LOGGER.info("[RPG Skill] smash skill={} target={}#{} type={} chance={} result={} extension={}",
+                if (SkillRuntimeConfig.values().observability().logPerTargetResults())
+                    RpgProject.LOGGER.info("[RPG Skill] smash skill={} target={}#{} type={} chance={} result={} extension={}",
                         skill.id(), target.getType().toShortString(), target.getId(), smash.type(), smash.chance(),
                         smashResult.status(), smashResult.extensionTicks());
             }
@@ -382,8 +458,16 @@ public final class SkillRuntime {
         if (skill.targeting() == SkillTargetingType.ENTITY_TARGETED) {
             if (context.targetEntityId() == null) return false;
             var entity = playerLevel(context).getEntity(context.targetEntityId());
-            return entity instanceof net.minecraft.world.entity.LivingEntity living && living.isAlive()
-                    && living != context.caster() && living.distanceToSqr(context.caster()) <= skill.range() * skill.range();
+            if (entity instanceof net.minecraft.world.entity.LivingEntity living && living.isAlive()
+                    && living != context.caster() && living.distanceToSqr(context.caster()) <= skill.range() * skill.range()) {
+                net.minecraft.world.phys.Vec3 eyePos = context.caster().getEyePosition();
+                net.minecraft.world.phys.Vec3 targetCenter = living.getBoundingBox().getCenter();
+                net.minecraft.world.phys.HitResult los = context.caster().level().clip(new net.minecraft.world.level.ClipContext(
+                    eyePos, targetCenter, net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE,
+                    context.caster()));
+                return los.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK;
+            }
+            return false;
         }
         if (skill.targeting() == SkillTargetingType.CHAIN) {
             if (context.targetEntityId() == null) return false;
@@ -413,18 +497,22 @@ public final class SkillRuntime {
 
     private static final class ActiveCast {
         private final SkillDefinition skill;
-        private final SkillExecutionContext context;
+        private SkillExecutionContext context;
         private final boolean cooldownRecast;
         private int tick;
         private boolean recovering;
+        private int elapsedTicks;
+        private boolean movementApplied;
 
         private ActiveCast(SkillDefinition skill, SkillExecutionContext context, boolean cooldownRecast,
-                           int tick, boolean recovering) {
+                           int tick, boolean recovering, int elapsedTicks, boolean movementApplied) {
             this.skill = skill;
             this.context = context;
             this.cooldownRecast = cooldownRecast;
             this.tick = tick;
             this.recovering = recovering;
+            this.elapsedTicks = elapsedTicks;
+            this.movementApplied = movementApplied;
         }
     }
 

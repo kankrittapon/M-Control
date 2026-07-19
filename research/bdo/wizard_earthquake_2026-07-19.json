@@ -1,0 +1,95 @@
+{
+  "snapshot_date": "2026-07-19",
+  "skill_id": "wizard_earthquake",
+  "name": "Earthquake",
+  "class": "Wizard",
+  "tree": "Main",
+  "source_revision": "current tooltip snapshot",
+  "input": "Shift+F",
+  "quick_slot_available": true,
+  "usable_during_cooldown": false,
+  "mounted_use": false,
+  "skill_addon_available": false,
+  "targeting": "self_aoe",
+  "max_targets": 7,
+  "pvp_damage_ratio": 0.6274,
+  "shared_effects": {
+    "mp_recovery_per_successful_hit": 15,
+    "protection": "super_armor",
+    "pve_pull": true,
+    "pve_cc": "bound",
+    "pvp_cc": "stiffness",
+    "special_attack": "down_attack",
+    "increased_casting_speed_from_rank": 2
+  },
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 30,
+      "required_points_current": 0,
+      "mp_cost": 100,
+      "cooldown_seconds": 120,
+      "damage_percent_per_hit": 936,
+      "hit_count": 4,
+      "brpg_coefficient_per_hit": 3.0594,
+      "brpg_total_coefficient": 12.2376
+    },
+    {
+      "rank": 2,
+      "required_level": 38,
+      "required_points_current": 0,
+      "mp_cost": 140,
+      "cooldown_seconds": 100,
+      "damage_percent_per_hit": 1224,
+      "hit_count": 5,
+      "brpg_coefficient_per_hit": 3.4986,
+      "brpg_total_coefficient": 17.493
+    },
+    {
+      "rank": 3,
+      "required_level": 45,
+      "required_points_current": 0,
+      "mp_cost": 180,
+      "cooldown_seconds": 80,
+      "damage_percent_per_hit": 1499,
+      "hit_count": 6,
+      "brpg_coefficient_per_hit": 3.8717,
+      "brpg_total_coefficient": 23.2302
+    },
+    {
+      "rank": 4,
+      "required_level": 52,
+      "required_points_current": 0,
+      "mp_cost": 220,
+      "cooldown_seconds": 60,
+      "damage_percent_per_hit": 2061,
+      "hit_count": 6,
+      "brpg_coefficient_per_hit": 4.5398,
+      "brpg_total_coefficient": 27.2388
+    }
+  ],
+  "superseded_mcp_fields": {
+    "resource_costs": [200, 240, 280, 320],
+    "accuracy_bonuses": [0.05, 0.075, 0.1, 0.15],
+    "max_mp_damage_percent": [0.01, 0.015, 0.015, 0.02],
+    "reason": "The MCP row preserves an older tooltip revision. The Max MP proportional damage effect was removed, and the current tooltip no longer lists rank-specific accuracy bonuses."
+  },
+  "not_source_defined": [
+    "minecraft_radius_blocks",
+    "cast_ticks",
+    "hit_ticks",
+    "pulse_spacing_ticks",
+    "recovery_ticks",
+    "pull_strength",
+    "particle_and_animation_timing"
+  ],
+  "sources": [
+    "https://black.inven.co.kr/dataninfo/skill/?code=786&reqjob=32",
+    "https://black.inven.co.kr/dataninfo/skill/?code=787&reqjob=32",
+    "https://black.inven.co.kr/dataninfo/skill/?code=788&reqjob=32",
+    "https://black.inven.co.kr/dataninfo/skill/?code=789&reqjob=32",
+    "https://bdocodex.com/us/skill/786/",
+    "https://bdocodex.com/gl/skill/789/",
+    "https://blackdesert.pearlabyss.com/Console/en-US/News/Notice/Detail?_boardNo=10437"
+  ]
+}

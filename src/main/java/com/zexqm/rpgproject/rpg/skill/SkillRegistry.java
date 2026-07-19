@@ -67,6 +67,7 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
 
     static SkillDefinition parse(ResourceLocation id, JsonObject root) {
         boolean debug = GsonHelper.getAsBoolean(root, "debug_only", false);
+        boolean innate = GsonHelper.getAsBoolean(root, "innate", false);
         RpgClass rpgClass = value(RpgClass.class, root, "class", debug ? RpgClass.WIZARD : null);
         Specialization specialization = value(Specialization.class, root, "specialization", null);
         JsonObject weapon = object(root, "weapons");
@@ -119,7 +120,7 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsInt(transitions, "skill_cancel_from_tick", -1),
                 GsonHelper.getAsBoolean(transitions, "skill_until_first_hit", false),
                 GsonHelper.getAsBoolean(transitions, "interrupts_casting", false));
-        return new SkillDefinition(id, debug, rpgClass, specialization,
+        return new SkillDefinition(id, debug, innate, rpgClass, specialization,
                 GsonHelper.getAsInt(root, "rank", 1), value(SkillTargetingType.class, root, "targeting", null),
                 weapons, value(PrimaryResourceType.class, root, "resource_type", PrimaryResourceType.MP),
                 GsonHelper.getAsInt(root, "resource_cost", 0), GsonHelper.getAsDouble(root, "stamina_cost", 0),
@@ -132,7 +133,9 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsDouble(root, "projectile_speed", 0),
                 value(FacingPolicy.class, root, "facing_policy", FacingPolicy.NONE),
                 GsonHelper.getAsDouble(root, "turn_speed", 0),
-                GsonHelper.getAsDouble(root, "cast_mp_recovery_percent", 0));
+                GsonHelper.getAsDouble(root, "cast_mp_recovery_percent", 0),
+                value(CasterMovementType.class, root, "caster_movement_type", CasterMovementType.NONE),
+                GsonHelper.getAsDouble(root, "caster_lateral_distance", 0));
     }
 
     private static SkillDefinition.Hit parseHit(JsonObject root, double defaultTargetPenalty,
@@ -162,13 +165,16 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
         JsonObject resource = object(root, "resources");
         SkillDefinition.ResourcePayload resources = new SkillDefinition.ResourcePayload(
                 GsonHelper.getAsDouble(resource, "max_mp_recovery_percent", 0),
+                GsonHelper.getAsInt(resource, "flat_mp_recovery", 0),
                 GsonHelper.getAsDouble(resource, "target_max_resource_drain_percent", 0),
                 GsonHelper.getAsDouble(resource, "drain_transfer_ratio", 0),
                 GsonHelper.getAsBoolean(resource, "recover_once_per_hit_window", true));
         return new SkillDefinition.Hit(GsonHelper.getAsInt(root, "timing_tick"),
                 GsonHelper.getAsDouble(root, "base_damage", 0), GsonHelper.getAsDouble(root, "coefficient", 1),
                 GsonHelper.getAsDouble(root, "radius", 0), value(RpgPowerType.class, root, "power_type", RpgPowerType.NONE),
-                value(CrowdControlType.class, root, "crowd_control", null), specials, statuses, smashes, resources,
+                value(CrowdControlType.class, root, "crowd_control", null),
+                value(CrowdControlType.class, root, "player_crowd_control", null),
+                GsonHelper.getAsDouble(root, "pull_strength", 0), specials, statuses, smashes, resources,
                 value(SkillImpactShape.class, root, "impact_shape", SkillImpactShape.AUTO),
                 GsonHelper.getAsInt(root, "max_targets", 0),
                 GsonHelper.getAsDouble(root, "forward_offset", 0),

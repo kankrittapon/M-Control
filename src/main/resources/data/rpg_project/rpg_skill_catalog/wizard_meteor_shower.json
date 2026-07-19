@@ -5,12 +5,13 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/8.Meteor Shower.png",
-  "playable": false,
-  "unavailable_reason": "Missing verified SP costs, prerequisites, and combat definition",
+  "sp_tier": "ultimate",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,
-      "required_level": 1
+      "required_level": 17
     },
     {
       "rank": 2,

@@ -24,7 +24,7 @@ public final class MobOverlayRenderer {
         LivingEntity entity = event.getEntity();
         Minecraft minecraft = Minecraft.getInstance();
         Player player = minecraft.player;
-        if (player == null || entity == player || entity.isInvisibleTo(player) || player.distanceTo(entity) > MAX_RENDER_DISTANCE) {
+        if (player == null || entity == player || entity.isInvisibleTo(player) || player.distanceToSqr(entity) > MAX_RENDER_DISTANCE * MAX_RENDER_DISTANCE) {
             return;
         }
 

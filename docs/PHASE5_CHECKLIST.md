@@ -7,7 +7,7 @@
 - [x] Load conversion tuning from `rpg_world_core/skill_runtime.json`.
 - [x] Validate invalid percentages, hit counts, and unsafe tuning.
 - [x] Add known-value and clamp unit tests.
-- [ ] Apply approved coefficients to the first eight production skill definitions. (Fireball pair complete.)
+- [x] Apply approved coefficients to the first eight production skill definitions.
 
 ## 5.2 Shared Combat Rules
 
@@ -46,6 +46,7 @@ Client acceptance commands and expected logs are documented in `PHASE5_FIREBALL_
 ## 5.6 Batch A Completion
 
 - [x] Select and freeze the remaining six Batch A skills.
-- [ ] Implement all eight skills through `RpgCombatService`.
-- [ ] Verify Normal, Elite, Boss, and Unstoppable behavior.
-- [ ] Run unit tests, build, GameTests, and `runClient` acceptance.
+- [x] Implement all eight skills through `RpgCombatService`.
+- [A] Verify Normal, Elite, Boss, and Unstoppable behavior through 14/14 required GameTests.
+- [~] Unit tests, build, and GameTests pass; remaining `runClient` checks stay tracked in
+  `TEST_CHECKLIST.md`.

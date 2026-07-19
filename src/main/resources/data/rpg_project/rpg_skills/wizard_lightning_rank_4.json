@@ -5,6 +5,7 @@
   "cast_ticks": 10, "recovery_ticks": 5, "movement_policy": "rotate_only",
   "facing_policy": "aim_on_cast", "turn_speed": 60.0, "transitions": {},
   "range": 20.0, "radius": 3.0,
+  "links": {"grant": "rpg_project:residual_lightning_ready", "grant_duration_ticks": 100, "grant_timing": "successful_hit"},
   "cooldown_recast": {"enabled": true, "damage_multiplier": 0.50, "allow_critical": true, "allow_special_attacks": true, "allow_crowd_control": false, "allow_smash": false, "allow_statuses": true, "allow_resources": false, "allow_protection": false},
   "hits": [
     {"timing_tick": 7, "impact_shape": "circle", "radius": 3.0, "max_targets": 10, "coefficient": 1.1900, "power_type": "magic", "crowd_control": "stun", "special_attacks": ["down_attack"], "statuses": [{"type": "slow", "duration_ticks": 100, "potency": 0.20, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]},

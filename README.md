@@ -268,9 +268,14 @@ Input priority and server-authoritative Blink/Dodge/cancel windows are defined i
 
 ### Phase 6: Wizard Combat Batch B
 
-- Add the next eight data-complete skills with multi-hit behavior and Burn, Slow, Freeze, and
-  Defense Down.
-- Verify stacking rules and Normal/Elite/Boss/Unstoppable control profiles.
+- Batch B currently includes Freeze, Frigid Fog, Blizzard, Lightning Storm, Residual Lightning,
+  Earthquake, Earth's Response, and Staff Attack production work.
+- The dense-combat checkpoint passed with bounded nearest-target selection, configurable resolver
+  metrics, progression-neutral stress targets, and 10/25/50-target acceptance.
+- Current fixes, additions, automated evidence, and remaining manual checks are recorded in
+  [`docs/PHASE6_CHECKPOINT_2026-07-19.md`](docs/PHASE6_CHECKPOINT_2026-07-19.md).
+- Continue verifying stacking rules and Normal/Elite/Boss/Unstoppable control profiles as each
+  production skill is accepted.
 - Gate: 16 of 32 Wizard Main entries are playable with regression coverage.
 
 ### Phase 7: Wizard Combat Batch C

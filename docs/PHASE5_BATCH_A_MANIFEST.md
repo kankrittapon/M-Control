@@ -22,7 +22,7 @@ The eight frozen stable IDs are:
 | Mana Absorption | Playable | Definition complete | Client acceptance and final icon replacement |
 | Lightning | Playable | Complete | Final icon replacement |
 | Lightning Chain | Playable | Complete | Final icon replacement |
-| Meteor Shower | Metadata | Missing | Damage pattern, prerequisite, placement/cancel timing |
+| Meteor Shower | Playable | Definition complete | Client acceptance and final icon replacement |
 
 Multiple Magic Arrows uses the audited single current rank from the normalized MCP record. Its raw
 generic `cost=21` remains excluded from SP; BRPG assigns the Advanced tier at 50 SP. Delivery tuning
@@ -45,3 +45,10 @@ Lightning Chain ranks I-IV use audited current damage `580/651/721/792% x3, max 
 `20/35/50/65`, target caps `3/4/5/6`, Stiffness and Shocked. BRPG models each BDO x3 group as
 one pulse coefficient and grants the future Lightning Storm link for 7 seconds on completion.
 Initial range 16, chain jump radius 4, timing and Core SP tier are provisional delivery values.
+
+Meteor Shower ranks I-III preserve audited MP `200/250/300`, cooldowns `130/110/90s`, the
+two opening hits and two meteor hits, 10-target cap, Burn, Stiffness, Knockdown, Down Attack,
+Front Guard while casting, and Super Armor during the attack. Range 24, impact radius 4.5,
+impact offsets, timing, and Ultimate SP tier are provisional BRPG delivery values documented in
+`PHASE5_METEOR_SHOWER_TUNING.md`. The selected ground anchor is fixed for this vertical slice;
+live retargeting during the channel remains a future input/runtime contract.

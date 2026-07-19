@@ -62,6 +62,7 @@ import com.zexqm.rpgproject.rpg.skill.MovementPolicy;
 import com.zexqm.rpgproject.rpg.skill.PrimaryResourceType;
 import com.zexqm.rpgproject.rpg.status.RpgStatusService;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -186,6 +187,12 @@ public final class CommonEvents {
                                     return 1;
                                 }))))
                 .then(Commands.literal("debug").requires(source -> source.hasPermission(2))
+                        .then(Commands.literal("perf-spawn")
+                                .then(Commands.argument("count", IntegerArgumentType.integer(10, 50))
+                                        .executes(ctx -> spawnPerformanceTargets(ctx,
+                                                IntegerArgumentType.getInteger(ctx, "count")))))
+                        .then(Commands.literal("perf-clear")
+                                .executes(CommonEvents::clearPerformanceTargets))
                         .then(Commands.literal("mana")
                                 .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
@@ -226,45 +233,8 @@ public final class CommonEvents {
                                             return result.outcome() == com.zexqm.rpgproject.rpg.combat.RpgDamageResult.Outcome.HIT ? 1 : 0;
                                         }))))
                         .then(Commands.literal("cast")
-                                .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx -> {
-                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                    net.minecraft.resources.ResourceLocation id = ResourceLocationArgument.getId(ctx, "skill");
-                                    var skill = SkillRegistry.get(id);
-                                    Vec3 origin = player.getEyePosition();
-                                    Vec3 direction = player.getLookAngle();
-                                    net.minecraft.world.phys.HitResult aimed = player.pick(32.0, 0.0F, false);
-                                    Vec3 rayEnd = origin.add(direction.scale(32.0));
-                                    var entityHit = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
-                                            player.serverLevel(), player, origin, rayEnd,
-                                            new net.minecraft.world.phys.AABB(origin, rayEnd).inflate(1.0),
-                                            entity -> entity instanceof LivingEntity living && living.isAlive()
-                                                    && living != player, 32.0F * 32.0F);
-                                    Integer targetId = entityHit == null ? null : entityHit.getEntity().getId();
-                                    Vec3 ground = aimed instanceof net.minecraft.world.phys.BlockHitResult blockHit
-                                            ? blockHit.getLocation() : origin.add(direction.scale(8.0));
-                                    if (skill != null && switch (skill.targeting()) {
-                                        case RAY, AIM_PROJECTILE, LINE, CHAIN, ENTITY_TARGETED, GROUND_AOE, CIRCLE -> true;
-                                        default -> false;
-                                    }) {
-                                        LivingEntity nearest = player.serverLevel().getEntitiesOfClass(LivingEntity.class,
-                                                        player.getBoundingBox().inflate(Math.max(1.0, skill.range())),
-                                                        entity -> entity != player && entity.isAlive())
-                                                .stream().min(java.util.Comparator.comparingDouble(player::distanceToSqr))
-                                                .orElse(null);
-                                        if (nearest != null) {
-                                            targetId = nearest.getId();
-                                            direction = nearest.getEyePosition().subtract(origin).normalize();
-                                            ground = nearest.position();
-                                            ctx.getSource().sendSuccess(() -> Component.literal(
-                                                    "Debug auto-aim: " + nearest.getType().toShortString()
-                                                            + " #" + nearest.getId() + " ground=" + nearest.position()), false);
-                                        }
-                                    }
-                                    var result = SkillRuntime.cast(player, id, new SkillExecutionContext(player,
-                                            origin, direction, targetId, ground));
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Skill cast result=" + result), false);
-                                    return result == com.zexqm.rpgproject.rpg.skill.SkillCastResult.STARTED ? 1 : 0;
-                                })))
+                                .then(Commands.argument("skill", ResourceLocationArgument.id())
+                                        .executes(CommonEvents::debugCast)))
                         .then(Commands.literal("aim-cast")
                                 .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
@@ -365,11 +335,122 @@ public final class CommonEvents {
                 })));
     }
 
+    private static final String PERFORMANCE_TARGET_TAG = "rpg_project_perf_target";
+
+    private static int debugCast(CommandContext<CommandSourceStack> context)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        ResourceLocation id = ResourceLocationArgument.getId(context, "skill");
+        try {
+            var skill = SkillRegistry.get(id);
+            Vec3 origin = player.getEyePosition();
+            Vec3 direction = player.getLookAngle();
+            net.minecraft.world.phys.HitResult aimed = player.pick(32.0, 0.0F, false);
+            Vec3 rayEnd = origin.add(direction.scale(32.0));
+            var entityHit = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
+                    player.serverLevel(), player, origin, rayEnd,
+                    new net.minecraft.world.phys.AABB(origin, rayEnd).inflate(1.0),
+                    entity -> entity instanceof LivingEntity living && living.isAlive()
+                            && living != player, 32.0F * 32.0F);
+            Integer targetId = entityHit == null ? null : entityHit.getEntity().getId();
+            Vec3 ground = aimed instanceof net.minecraft.world.phys.BlockHitResult blockHit
+                    ? blockHit.getLocation() : origin.add(direction.scale(8.0));
+            if (skill != null && switch (skill.targeting()) {
+                case RAY, AIM_PROJECTILE, LINE, CHAIN, ENTITY_TARGETED, GROUND_AOE, CIRCLE -> true;
+                default -> false;
+            }) {
+                LivingEntity nearest = player.serverLevel().getEntitiesOfClass(LivingEntity.class,
+                                player.getBoundingBox().inflate(Math.max(1.0, skill.range())),
+                                entity -> entity != player && entity.isAlive())
+                        .stream().min(java.util.Comparator.comparingDouble(player::distanceToSqr))
+                        .orElse(null);
+                if (nearest != null) {
+                    targetId = nearest.getId();
+                    direction = nearest.getEyePosition().subtract(origin).normalize();
+                    ground = nearest.position();
+                    context.getSource().sendSuccess(() -> Component.literal(
+                            "Debug auto-aim: " + nearest.getType().toShortString()
+                                    + " #" + nearest.getId() + " ground=" + nearest.position()), false);
+                }
+            }
+            var result = SkillRuntime.cast(player, id, new SkillExecutionContext(player,
+                    origin, direction, targetId, ground));
+            context.getSource().sendSuccess(() -> Component.literal("Skill cast result=" + result), false);
+            return result == com.zexqm.rpgproject.rpg.skill.SkillCastResult.STARTED ? 1 : 0;
+        } catch (RuntimeException exception) {
+            RpgProject.LOGGER.error("[RPG Skill] debug-cast-error player={} skill={}",
+                    player.getScoreboardName(), id, exception);
+            context.getSource().sendFailure(Component.literal("Debug cast failed for " + id + ": "
+                    + exception.getClass().getSimpleName() + " - " + String.valueOf(exception.getMessage())));
+            return 0;
+        }
+    }
+
+    private static int spawnPerformanceTargets(CommandContext<CommandSourceStack> context, int count)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        if (count != 10 && count != 25 && count != 50) {
+            context.getSource().sendFailure(Component.literal("Count must be 10, 25, or 50"));
+            return 0;
+        }
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        var level = player.serverLevel();
+        clearPerformanceTargets(level);
+        Vec3 forward = player.getLookAngle().multiply(1, 0, 1);
+        if (forward.lengthSqr() < 1.0E-6) forward = new Vec3(0, 0, 1); else forward = forward.normalize();
+        Vec3 right = new Vec3(-forward.z, 0, forward.x);
+        Vec3 origin = player.position().add(forward.scale(2.0));
+        int columns = count == 10 ? 5 : count == 25 ? 5 : 10;
+        int spawned = 0;
+        for (int index = 0; index < count; index++) {
+            Mob mob = EntityType.ZOMBIE.create(level);
+            if (mob == null) continue;
+            int row = index / columns;
+            int column = index % columns;
+            double lateral = (column - (columns - 1) * 0.5) * 0.7;
+            double forwardOffset = row * 0.7;
+            Vec3 position = origin.add(right.scale(lateral)).add(forward.scale(forwardOffset));
+            mob.moveTo(position.x, position.y, position.z, player.getYRot() + 180.0F, 0.0F);
+            mob.setNoAi(true);
+            mob.setSilent(true);
+            mob.setPersistenceRequired();
+            mob.addTag(PERFORMANCE_TARGET_TAG);
+            var maxHealth = mob.getAttribute(Attributes.MAX_HEALTH);
+            if (maxHealth != null) maxHealth.setBaseValue(100_000.0);
+            mob.setHealth(mob.getMaxHealth());
+            if (level.addFreshEntity(mob)) spawned++;
+        }
+        int result = spawned;
+        context.getSource().sendSuccess(() -> Component.literal("Spawned " + result
+                + " stationary RPG performance targets"), false);
+        RpgProject.LOGGER.info("[RPG Skill Perf] spawned={} requested={} player={}",
+                spawned, count, player.getScoreboardName());
+        return spawned;
+    }
+
+    private static int clearPerformanceTargets(CommandContext<CommandSourceStack> context) {
+        int removed = clearPerformanceTargets(context.getSource().getLevel());
+        context.getSource().sendSuccess(() -> Component.literal("Removed " + removed
+                + " RPG performance targets"), false);
+        return removed;
+    }
+
+    private static int clearPerformanceTargets(net.minecraft.server.level.ServerLevel level) {
+        int removed = 0;
+        for (Entity entity : level.getAllEntities()) {
+            if (entity.getTags().contains(PERFORMANCE_TARGET_TAG)) {
+                entity.discard();
+                removed++;
+            }
+        }
+        return removed;
+    }
+
     @SubscribeEvent
     public static void livingDeath(LivingDeathEvent event) {
         event.getEntity().getCapability(RpgCombatStateProvider.DATA).ifPresent(RpgCombatState::clear);
         if (event.getEntity() instanceof ServerPlayer deadPlayer) SkillRuntime.clearTransient(deadPlayer);
         if (!(event.getSource().getEntity() instanceof ServerPlayer player) || event.getEntity() == player) return;
+        if (event.getEntity().getTags().contains(PERFORMANCE_TARGET_TAG)) return;
         long reward = Math.max(10L, Math.round(event.getEntity().getMaxHealth() * 5.0));
         player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(data -> {
             int gained = data.addExperience(reward);
@@ -504,7 +585,9 @@ public final class CommonEvents {
 
     private static void setBase(ServerPlayer player, net.minecraft.world.entity.ai.attributes.Attribute attribute, double value) {
         var instance = player.getAttribute(attribute);
-        if (instance != null && instance.getBaseValue() != value) instance.setBaseValue(value);
+        if (instance != null && Math.abs(instance.getBaseValue() - value) > 0.001) {
+            instance.setBaseValue(value);
+        }
     }
 
     @SubscribeEvent
@@ -617,7 +700,8 @@ public final class CommonEvents {
     private static void syncCombat(ServerPlayer player, RpgCombatState state) {
         RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncCombatStatePacket(
                 state.guard(), state.maximumGuard(), state.ccPoints(), state.ccImmunityTicks(),
-                state.activeCc(), state.activeCcTicks(), state.casting()));
+                state.activeCc(), state.activeCcTicks(), state.casting(), state.frontGuardTicks(),
+                state.superArmorTicks(), state.iframeTicks(), state.grabImmuneTicks()));
     }
 
     private CommonEvents() {

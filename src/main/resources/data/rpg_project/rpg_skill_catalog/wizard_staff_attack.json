@@ -5,48 +5,57 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/0.Staff Attack.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "playable": true,
   "ranks": [
     {
       "rank": 1,
-      "required_level": 1
+      "required_level": 1,
+      "sp_cost": 0
     },
     {
       "rank": 2,
-      "required_level": 9
+      "required_level": 9,
+      "sp_cost": 5
     },
     {
       "rank": 3,
-      "required_level": 14
+      "required_level": 14,
+      "sp_cost": 7
     },
     {
       "rank": 4,
-      "required_level": 19
+      "required_level": 19,
+      "sp_cost": 10
     },
     {
       "rank": 5,
-      "required_level": 23
+      "required_level": 23,
+      "sp_cost": 12
     },
     {
       "rank": 6,
-      "required_level": 27
+      "required_level": 27,
+      "sp_cost": 14
     },
     {
       "rank": 7,
-      "required_level": 31
+      "required_level": 31,
+      "sp_cost": 19
     },
     {
       "rank": 8,
-      "required_level": 35
+      "required_level": 35,
+      "sp_cost": 23
     },
     {
       "rank": 9,
-      "required_level": 39
+      "required_level": 39,
+      "sp_cost": 24
     },
     {
       "rank": 10,
-      "required_level": 43
+      "required_level": 43,
+      "sp_cost": 25
     }
   ],
   "prerequisites": [],

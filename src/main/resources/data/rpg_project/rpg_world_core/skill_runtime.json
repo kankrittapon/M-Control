@@ -1,6 +1,11 @@
 {
   "draw_ticks": 8,
   "sheathe_ticks": 6,
+  "observability": {
+    "log_hit_performance": true,
+    "log_per_target_results": true,
+    "slow_resolver_micros": 1000
+  },
   "bdo_damage_conversion": {
     "reference_percent": 1000.0,
     "exponent": 0.5,

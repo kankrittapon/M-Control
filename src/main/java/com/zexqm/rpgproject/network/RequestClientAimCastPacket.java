@@ -28,8 +28,10 @@ public record RequestClientAimCastPacket(ResourceLocation skillId) {
             Integer targetId = aim.entityHit() == null ? null : aim.entityHit().getEntity().getId();
             var ground = aim.blockHit() != null && aim.blockHit().getType() != HitResult.Type.MISS
                     ? aim.blockHit().getLocation() : aim.targetPoint();
+            int lateralSide = minecraft.options.keyLeft.isDown() ? -1
+                    : minecraft.options.keyRight.isDown() ? 1 : 0;
             RpgNetwork.CHANNEL.sendToServer(new CastSkillRequestPacket(
-                    packet.skillId, aim.direction(), targetId, ground));
+                    packet.skillId, aim.direction(), targetId, ground, lateralSide));
             minecraft.player.displayClientMessage(
                     net.minecraft.network.chat.Component.literal("Debug client aim: target="
                             + (targetId == null ? "none" : targetId) + " ground=" + ground), false);

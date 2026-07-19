@@ -6,6 +6,7 @@ import com.zexqm.rpgproject.mana.ClientMana;
 import com.zexqm.rpgproject.network.RpgNetwork;
 import com.zexqm.rpgproject.network.ToggleCombatPacket;
 import com.zexqm.rpgproject.network.CancelSkillActionPacket;
+import com.zexqm.rpgproject.network.CastSkillRequestPacket;
 import com.zexqm.rpgproject.rpg.skill.SkillCancelTrigger;
 import com.zexqm.rpgproject.rpg.skill.SkillActionState;
 import com.zexqm.rpgproject.rpg.skill.MovementPolicy;
@@ -18,6 +19,7 @@ import net.minecraft.client.gui.screens.OptionsScreen;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -45,6 +47,11 @@ public final class ClientEvents {
     private static int lastLeftClickEntityId = -1;
     private static BlockPos lastLeftClickBlockPos;
     private static boolean movementCancelSent;
+    private static boolean suppressNextLeftRelease;
+    private static final ResourceLocation EARTHS_RESPONSE =
+            new ResourceLocation(RpgProject.MOD_ID, "wizard_earth_s_response");
+    private static final ResourceLocation WIZARD_STAFF_ATTACK =
+            new ResourceLocation(RpgProject.MOD_ID, "wizard_staff_attack");
 
     public static final KeyMapping TOGGLE_VIEW_MODE = new KeyMapping(
             "key.rpg_project.toggle_view_mode",
@@ -60,6 +67,8 @@ public final class ClientEvents {
     );
     public static final KeyMapping TOGGLE_COMBAT = new KeyMapping("key.rpg_project.toggle_combat",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_TAB, "key.categories.rpg_project");
+    public static final KeyMapping TOGGLE_DEBUG_HUD = new KeyMapping("key.rpg_project.toggle_debug_hud",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F8, "key.categories.rpg_project");
 
     @Mod.EventBusSubscriber(modid = RpgProject.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static final class ModBusEvents {
@@ -68,6 +77,7 @@ public final class ClientEvents {
             event.register(TOGGLE_VIEW_MODE);
             event.register(TOGGLE_MOUSE_MOVEMENT);
             event.register(TOGGLE_COMBAT);
+            event.register(TOGGLE_DEBUG_HUD);
         }
     }
 
@@ -85,6 +95,7 @@ public final class ClientEvents {
         while (TOGGLE_VIEW_MODE.consumeClick()) {
             ClientControlState.toggleViewMode(minecraft);
         }
+        while (TOGGLE_DEBUG_HUD.consumeClick()) ClientDebugHud.toggle(minecraft);
 
         ClientCameraController.tick(minecraft);
         ClientControlState.updateMouseMovementMode(minecraft, TOGGLE_MOUSE_MOVEMENT.isDown());
@@ -96,6 +107,7 @@ public final class ClientEvents {
         ClientControlState.tick(minecraft);
         ClientTargeting.tick(minecraft);
         ClientCombatState.tick();
+        ClientDebugHud.tick(minecraft);
         if (ClientSkillState.action() != SkillActionState.CASTING) movementCancelSent = false;
 
         if (ClientCombatState.actionLocked()) {
@@ -127,9 +139,38 @@ public final class ClientEvents {
     @SubscribeEvent
     public static void mouseButton(InputEvent.MouseButton.Pre event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.screen != null || !ClientControlState.isMouseMovementMode()) {
+        if (minecraft.screen != null) {
+            suppressNextLeftRelease = false;
             return;
         }
+
+        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && event.getAction() == GLFW.GLFW_PRESS
+                && tryDirectionalCombatSkill(minecraft)) {
+            suppressNextLeftRelease = true;
+            minecraft.options.keyAttack.setDown(false);
+            event.setCanceled(true);
+            return;
+        }
+
+        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && event.getAction() == GLFW.GLFW_PRESS
+                && !ClientControlState.isMouseMovementMode()
+                && tryBasicCombatSkill(minecraft)) {
+            suppressNextLeftRelease = true;
+            minecraft.options.keyAttack.setDown(false);
+            event.setCanceled(true);
+            return;
+        }
+
+        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && event.getAction() == GLFW.GLFW_RELEASE && suppressNextLeftRelease) {
+            suppressNextLeftRelease = false;
+            event.setCanceled(true);
+            return;
+        }
+
+        if (!ClientControlState.isMouseMovementMode()) return;
 
         if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT && event.getAction() == GLFW.GLFW_RELEASE) {
             handleLeftClick(minecraft);
@@ -151,6 +192,38 @@ public final class ClientEvents {
             handleRightClick(minecraft);
             event.setCanceled(true);
         }
+    }
+
+    private static boolean tryDirectionalCombatSkill(Minecraft minecraft) {
+        if (minecraft.player == null || minecraft.level == null
+                || ClientSkillState.action() != SkillActionState.READY
+                || ClientCombatState.actionLocked()) return false;
+        boolean left = minecraft.options.keyLeft.isDown();
+        boolean right = minecraft.options.keyRight.isDown();
+        if (left == right) return false;
+
+        int side = left ? -1 : 1;
+        ClientControlState.cancelAutoMove();
+        sendAimSkill(minecraft, EARTHS_RESPONSE, side);
+        return true;
+    }
+
+    private static boolean tryBasicCombatSkill(Minecraft minecraft) {
+        if (minecraft.player == null || minecraft.level == null
+                || ClientSkillState.action() != SkillActionState.READY
+                || ClientCombatState.actionLocked()) return false;
+        ClientControlState.cancelAutoMove();
+        sendAimSkill(minecraft, WIZARD_STAFF_ATTACK, 0);
+        return true;
+    }
+
+    private static void sendAimSkill(Minecraft minecraft, ResourceLocation skillId, int lateralSide) {
+        ClientAim.AimResult aim = ClientAim.current(minecraft);
+        Integer targetId = aim.entityHit() == null ? null : aim.entityHit().getEntity().getId();
+        Vec3 ground = aim.blockHit() != null && aim.blockHit().getType() != HitResult.Type.MISS
+                ? aim.blockHit().getLocation() : aim.targetPoint();
+        RpgNetwork.CHANNEL.sendToServer(new CastSkillRequestPacket(
+                skillId, aim.direction(), targetId, ground, lateralSide));
     }
 
     @SubscribeEvent
@@ -256,6 +329,8 @@ public final class ClientEvents {
         GuiGraphics graphics = event.getGuiGraphics();
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
+
+        ClientDebugHud.render(minecraft, graphics, width);
 
         if (ClientSkillState.action() == com.zexqm.rpgproject.rpg.skill.SkillActionState.CASTING) {
             var icon = ClientSkillIcons.icon(ClientSkillState.activeSkill());

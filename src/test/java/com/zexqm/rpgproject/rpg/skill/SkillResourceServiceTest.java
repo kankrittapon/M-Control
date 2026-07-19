@@ -20,6 +20,17 @@ class SkillResourceServiceTest {
     }
 
     @Test
+    void restoresFlatManaFromEachSuccessfulHitWindow() {
+        Mana caster = manaAt(100, 20);
+        var payload = new SkillDefinition.ResourcePayload(0, 15, 0, 0, true);
+
+        var result = SkillResourceService.apply(caster, null, payload, true);
+
+        assertEquals(15, result.recovered());
+        assertEquals(35, caster.getMana());
+    }
+
+    @Test
     void drainsTargetAndTransfersOnlyWhatCasterCanReceive() {
         Mana caster = manaAt(100, 95);
         Mana target = manaAt(200, 15);

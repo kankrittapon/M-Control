@@ -1,0 +1,14 @@
+{
+  "skill_id": "rpg_project:wizard_frigid_fog", "class": "wizard", "rank": 3,
+  "targeting": "self_aoe", "weapons": {"weapon_set": "main", "main": true, "sub": true},
+  "resource_type": "mp", "resource_cost": 140, "cooldown_ticks": 320,
+  "cast_ticks": 12, "recovery_ticks": 6, "movement_policy": "locked",
+  "facing_policy": "none", "transitions": {"skill_cancel_from_tick": 0, "skill_until_first_hit": true},
+  "radius": 5.0,
+  "protection_windows": [{"type": "super_armor", "from_tick": 0, "to_tick": 10}],
+  "hits": [
+    {"timing_tick": 8, "radius": 5.0, "max_targets": 10, "coefficient": 1.9468, "power_type": "magic", "hit_chance_bonus": 0.14, "special_attacks": ["down_attack"]},
+    {"timing_tick": 9, "radius": 5.0, "max_targets": 10, "coefficient": 1.9468, "power_type": "magic", "hit_chance_bonus": 0.14, "special_attacks": ["down_attack"]},
+    {"timing_tick": 10, "radius": 5.0, "max_targets": 10, "coefficient": 1.9468, "power_type": "magic", "hit_chance_bonus": 0.14, "special_attacks": ["down_attack"], "crowd_control": "freeze", "resources": {"target_max_resource_drain_percent": 0.04}}
+  ]
+}

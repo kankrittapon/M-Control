@@ -1,0 +1,28 @@
+{
+  "skill_id": "rpg_project:wizard_meteor_shower",
+  "class": "wizard",
+  "rank": 1,
+  "targeting": "ground_aoe",
+  "weapons": {"weapon_set": "main", "main": true, "sub": true},
+  "resource_type": "mp",
+  "resource_cost": 200,
+  "cooldown_ticks": 2600,
+  "cast_ticks": 36,
+  "recovery_ticks": 8,
+  "movement_policy": "locked",
+  "facing_policy": "aim_on_cast",
+  "turn_speed": 45.0,
+  "transitions": {"movement_cancel_from_tick": 0, "movement_until_first_hit": true},
+  "range": 24.0,
+  "radius": 4.5,
+  "hits": [
+    {"timing_tick": 28, "impact_shape": "circle", "radius": 4.5, "max_targets": 10, "coefficient": 3.8807, "power_type": "magic", "crowd_control": "stiffness", "special_attacks": ["down_attack"], "statuses": [{"type": "burn", "duration_ticks": 360, "interval_ticks": 60, "potency": 30.0, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]},
+    {"timing_tick": 30, "impact_shape": "circle", "radius": 4.5, "max_targets": 10, "coefficient": 3.8807, "power_type": "magic", "special_attacks": ["down_attack"], "statuses": [{"type": "burn", "duration_ticks": 360, "interval_ticks": 60, "potency": 30.0, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]},
+    {"timing_tick": 33, "impact_shape": "circle", "radius": 4.5, "max_targets": 10, "right_offset": -1.5, "coefficient": 4.0050, "power_type": "magic", "crowd_control": "knockdown", "special_attacks": ["down_attack"], "statuses": [{"type": "burn", "duration_ticks": 360, "interval_ticks": 60, "potency": 30.0, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]},
+    {"timing_tick": 35, "impact_shape": "circle", "radius": 4.5, "max_targets": 10, "right_offset": 1.5, "coefficient": 4.0050, "power_type": "magic", "special_attacks": ["down_attack"], "statuses": [{"type": "burn", "duration_ticks": 360, "interval_ticks": 60, "potency": 30.0, "max_stacks": 1, "stacking": "refresh", "allowed_profiles": ["normal", "elite", "boss"]}]}
+  ],
+  "protection_windows": [
+    {"type": "front_guard", "from_tick": 0, "to_tick": 27},
+    {"type": "super_armor", "from_tick": 28, "to_tick": 36}
+  ]
+}

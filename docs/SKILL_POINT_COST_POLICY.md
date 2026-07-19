@@ -31,7 +31,11 @@ Generic MCP `cost` is not treated as SP because several Wizard records use it fo
 - Lightning, Basic ranks I-V: 150 SP total.
 - Lightning Chain, Core ranks I-IV: 205 SP total.
 - First three skills subtotal: 450 SP.
-- Current seven playable skills total: 980 SP.
+- Current thirteen playable skills total: 2515 SP, including Meteor Shower's Ultimate-tier 500 SP,
+  Freeze's Basic-tier 150 SP, Frigid Fog's Core-tier 205 SP, Blizzard's Advanced-tier 350 SP,
+  Lightning Storm's Core-tier 125 SP, and Residual Lightning's Core-tier 205 SP.
+- Earthquake uses the Advanced tier for 350 SP across ranks I-IV.
+- Earth's Response uses the Basic tier for 60 SP across ranks I-III.
 
 Client acceptance is tracked separately from catalog playability. This table is a balance checkpoint,
 not a promise that every future skill must use an unmodified tier cost.

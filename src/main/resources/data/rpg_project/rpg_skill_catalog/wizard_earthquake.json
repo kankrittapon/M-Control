@@ -5,8 +5,9 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/16.Earthquake.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "sp_tier": "advanced",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,
