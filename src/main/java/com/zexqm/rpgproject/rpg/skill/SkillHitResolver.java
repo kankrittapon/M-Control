@@ -43,18 +43,25 @@ public final class SkillHitResolver {
 
         switch (definition.targeting()) {
             case ENTITY_TARGETED -> {
-                if (context.targetEntityId() == null) return Set.of();
-                countCandidates(1);
-                if (level.getEntity(context.targetEntityId()) instanceof LivingEntity target
-                        && target != context.caster() && target.isAlive()
-                        && target.distanceToSqr(context.caster()) <= range * range) result.add(target);
+                if (includesSelf(hit.targetDisposition())) result.add(context.caster());
+                if (context.targetEntityId() != null) {
+                    countCandidates(1);
+                    if (level.getEntity(context.targetEntityId()) instanceof LivingEntity target
+                            && validTarget(context.caster(), target, hit.targetDisposition())
+                            && (target == context.caster() || context.caster().hasLineOfSight(target))
+                            && target.distanceToSqr(context.caster()) <= range * range) result.add(target);
+                }
             }
             case RAY, AIM_PROJECTILE -> {
                 LivingEntity nearest = rayTarget(level, context, end, Math.max(0.0, radius));
                 if (nearest != null) result.add(nearest);
             }
             case CHAIN -> collectChain(level, context, radius, hit.maxTargets(), result);
-            case SELF_AOE -> collectCircle(level, context.caster(), context.caster().position(), radius, result);
+            case SELF_AOE -> {
+                if (includesSelf(hit.targetDisposition())) result.add(context.caster());
+                collectCircle(level, context.caster(), context.caster().position(), radius,
+                        hit.maxTargets(), hit.targetDisposition(), result);
+            }
             case GROUND_AOE, CIRCLE -> {
                 Vec3 center = offsetCenter(context.groundPosition() == null ? end : context.groundPosition(),
                         context.direction(), hit);
@@ -87,7 +94,8 @@ public final class SkillHitResolver {
             }
         }
         if (definition.targeting() == SkillTargetingType.CHAIN) return result;
-        return limit(result, context.caster(), impactCenter(definition, hit, context), hit.maxTargets());
+        return limit(result, context.caster(), impactCenter(definition, hit, context), hit.maxTargets(),
+                hit.targetDisposition());
     }
 
     public static Set<LivingEntity> resolveImpact(SkillDefinition definition, SkillDefinition.Hit hit,
@@ -113,9 +121,16 @@ public final class SkillHitResolver {
 
     private static void collectCircle(ServerLevel level, LivingEntity caster, Vec3 center, double radius,
                                       int maxTargets, Set<LivingEntity> result) {
+        collectCircle(level, caster, center, radius, maxTargets, SkillTargetDisposition.HOSTILE, result);
+    }
+
+    private static void collectCircle(ServerLevel level, LivingEntity caster, Vec3 center, double radius,
+                                      int maxTargets, SkillTargetDisposition disposition,
+                                      Set<LivingEntity> result) {
         List<LivingEntity> candidates = level.getEntitiesOfClass(LivingEntity.class,
                 new AABB(center, center).inflate(radius),
-                target -> validTarget(caster, target) && distanceToBoundsSqr(center, target.getBoundingBox())
+                target -> validTarget(caster, target, disposition)
+                        && distanceToBoundsSqr(center, target.getBoundingBox())
                         <= radius * radius);
         countCandidates(candidates.size());
         result.addAll(nearest(candidates, maxTargets,
@@ -124,6 +139,23 @@ public final class SkillHitResolver {
 
     private static boolean validTarget(LivingEntity caster, LivingEntity target) {
         return target != caster && target.isAlive() && !caster.isAlliedTo(target);
+    }
+
+    private static boolean validTarget(LivingEntity caster, LivingEntity target,
+                                       SkillTargetDisposition disposition) {
+        if (!target.isAlive()) return false;
+        return switch (disposition) {
+            case HOSTILE -> validTarget(caster, target);
+            case SELF -> target == caster;
+            case ALLY -> target != caster && target instanceof net.minecraft.world.entity.player.Player;
+            case SELF_AND_ALLY -> target == caster
+                    || target instanceof net.minecraft.world.entity.player.Player;
+        };
+    }
+
+    private static boolean includesSelf(SkillTargetDisposition disposition) {
+        return disposition == SkillTargetDisposition.SELF
+                || disposition == SkillTargetDisposition.SELF_AND_ALLY;
     }
 
     private static Vec3 offsetCenter(Vec3 center, Vec3 direction, SkillDefinition.Hit hit) {
@@ -145,8 +177,10 @@ public final class SkillHitResolver {
     }
 
     private static Set<LivingEntity> limit(Set<LivingEntity> targets, LivingEntity caster,
-                                           Vec3 center, int maxTargets) {
-        List<LivingEntity> valid = targets.stream().filter(target -> validTarget(caster, target)).toList();
+                                           Vec3 center, int maxTargets,
+                                           SkillTargetDisposition disposition) {
+        List<LivingEntity> valid = targets.stream()
+                .filter(target -> validTarget(caster, target, disposition)).toList();
         return new LinkedHashSet<>(nearest(valid, maxTargets,
                 target -> distanceToBoundsSqr(center, target.getBoundingBox())));
     }

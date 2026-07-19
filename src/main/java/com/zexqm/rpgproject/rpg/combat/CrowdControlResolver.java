@@ -28,7 +28,9 @@ public final class CrowdControlResolver {
         if (profile.hardCcImmune()) return result(CrowdControlApplicationResult.Status.IMMUNE, type, 0.0, 0);
 
         double resistance = Math.max(0.0, Math.min(1.0,
-                RpgCombatStats.resolve(target).ccResistance() + profile.resistanceBonus()));
+                RpgCombatStats.resolve(target).ccResistance() + profile.resistanceBonus()
+                        + target.getCapability(RpgCombatStateProvider.DATA)
+                        .map(RpgCombatState::resistanceBuff).orElse(0.0)));
         if (target.getRandom().nextDouble() < resistance) {
             return result(CrowdControlApplicationResult.Status.RESISTED, type, 0.0, 0);
         }

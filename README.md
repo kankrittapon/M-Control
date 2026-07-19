@@ -2,7 +2,8 @@
 
 Minecraft Forge 1.20.1 action-RPG control and world-core mod. The project currently focuses on
 server-authoritative progression, combat calculations, camera controls, and reusable class systems.
-Playable class skills, models, and animations are intentionally deferred until their catalog data is complete.
+Production Wizard skills are being enabled in audited batches. Models and animations remain deferred
+to the GeckoLib presentation phase and never control server damage timing.
 
 Current checkpoint: [`TASK.md`](TASK.md) | [`PHASE.md`](PHASE.md) | [`WhatIdo.md`](WhatIdo.md)
 
@@ -121,7 +122,10 @@ The trial datapack-backed Skill Point tiers are documented in
 - Mob profiles resolve as Normal, Elite, Boss, or Unstoppable. Unknown modded entities default to Normal.
 - Boss and Elite compatibility is extendable through entity-type tags without Java changes.
 - Burn, Slow, and Defense Down are transient Status effects with refresh, stronger-replace, or stacking rules.
-- Debug-only datapack skills exercise every runtime path; production Wizard/Ninja skills are still deferred.
+- Support hits can heal the caster and player allies without entering the hostile damage pipeline.
+- Timed defensive payloads support MP-backed damage absorption and additive CC Resistance buffs.
+- Debug-only datapack skills remain a regression suite; Wizard production skills are enabled in
+  audited batches while Ninja production skills remain deferred.
 
 ### Skill Catalog And Progression
 
@@ -133,8 +137,11 @@ The trial datapack-backed Skill Point tiers are documented in
 - Client requests use replay-protected packets and receive rank, SP, and availability state from the server.
 - The Wizard Main MCP catalog contains all 32 stable IDs, names, descriptions, icon source paths,
   rank counts, and known required levels.
-- All Wizard Main entries are currently metadata-only and cannot be learned or cast until SP costs,
-  prerequisites, and combat definitions are approved.
+- Wizard Main currently contains 19 playable entries and 13 safely gated metadata-only entries.
+- Resurrection has a dedicated lifecycle API skeleton but remains gated until player death/downed,
+  respawn, disconnect, and multiplayer race behavior are designed.
+- Healing Aura, Healing Lighthouse, and Magical Shield use generic support/defensive contracts rather
+  than hard-coded skill IDs.
 - Crosshair rays use the entity bounding box exactly. Projectile and line width comes only from the
   skill definition rather than a hidden targeting allowance.
 
@@ -196,6 +203,8 @@ Run `/reload` after changing a profile. Invalid or missing profiles fall back to
 /rpg skills upgrade rpg_project:wizard_fireball
 /rpg skills downgrade rpg_project:wizard_fireball
 /rpg skills reset
+/rpg skills force-upgrade rpg_project:wizard_magical_shield 4
+/rpg debug cast rpg_project:wizard_magical_shield
 ```
 
 Protection and debug mutation commands require operator permission level 2.

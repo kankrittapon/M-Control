@@ -1,6 +1,6 @@
 # What We Did
 
-Updated: 2026-07-14
+Updated: 2026-07-19
 
 ## Foundations
 
@@ -34,10 +34,23 @@ Updated: 2026-07-14
   chance modifiers to the damage context.
 - Frozen the eight-skill Wizard Main Batch A roster without inventing missing combat data.
 
+## Phase 6 Skill Work
+
+- Expanded Wizard Main to 19 playable entries and 13 metadata-only entries.
+- Added generic heal-only targeting for Healing Aura I-V and three-pulse support AoE for Healing
+  Lighthouse I-IV, including separate caster/ally HP values and MP recovery.
+- Added a standalone Resurrection lifecycle skeleton and kept the skill unplayable until a real
+  dead/downed-player flow exists.
+- Implemented Magical Shield I-IV through a generic defensive payload: damage-to-MP conversion,
+  insufficient-MP fallback, timed CC Resistance, vanilla/RPG damage integration, and debug logs.
+- Updated the explicit playable skill budget to 3189 SP.
+
 ## Verification
 
-- Latest `gradlew test build`: passed.
-- Latest `gradlew runGameTestServer`: all 12 required tests passed.
-- Runtime loaded 19 definitions across 12 stable skill IDs.
+- Latest `gradlew test`: 73 tests passed.
+- Latest `gradlew build`: passed.
+- Latest `gradlew runGameTestServer`: all 14 required tests passed.
+- Runtime loaded 85 definitions across 28 stable skill IDs and 32 catalog entries
+  (`19 playable`, `13 metadata-only`).
 
 Current continuation point: `TASK.md`.

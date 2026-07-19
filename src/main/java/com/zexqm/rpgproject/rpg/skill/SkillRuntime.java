@@ -341,21 +341,48 @@ public final class SkillRuntime {
         int targetIndex = 0;
         for (var target : targets) {
             double targetMultiplier = hit.targetDamageMultiplier(targetIndex++);
-            var crowdControl = target instanceof net.minecraft.world.entity.player.Player
-                    && hit.playerCrowdControl() != null ? hit.playerCrowdControl() : hit.crowdControl();
-            var result = RpgCombatService.apply(new RpgDamageContext(context.caster(), target, context.origin(),
-                    hit.baseDamage(), hit.powerType(), hit.coefficient() * targetMultiplier * (cooldownRecast
-                    ? recast.damageMultiplier() : 1.0), true,
-                    !cooldownRecast || recast.allowCritical(),
-                    hit.hitChanceBonus(), hit.criticalChanceBonus(),
-                    cooldownRecast && !recast.allowCrowdControl() ? null : crowdControl,
-                    cooldownRecast && !recast.allowSpecialAttacks() ? java.util.Set.of() : hit.specialAttacks()));
-            if (SkillRuntimeConfig.values().observability().logPerTargetResults())
-                RpgProject.LOGGER.info("[RPG Skill] damage skill={} target={}#{} targetMultiplier={} outcome={} damage={} specials={} cc={}",
-                        skill.id(), target.getType().toShortString(), target.getId(), targetMultiplier,
-                        result.outcome(), result.damage(), result.specialAttacks(), result.crowdControl());
-            if (result.outcome() != com.zexqm.rpgproject.rpg.combat.RpgDamageResult.Outcome.HIT) continue;
+            boolean damaging = hit.baseDamage() > 0
+                    || hit.powerType() != com.zexqm.rpgproject.rpg.combat.RpgPowerType.NONE
+                    && hit.coefficient() > 0;
+            if (damaging) {
+                var crowdControl = target instanceof net.minecraft.world.entity.player.Player
+                        && hit.playerCrowdControl() != null ? hit.playerCrowdControl() : hit.crowdControl();
+                var result = RpgCombatService.apply(new RpgDamageContext(context.caster(), target, context.origin(),
+                        hit.baseDamage(), hit.powerType(), hit.coefficient() * targetMultiplier * (cooldownRecast
+                        ? recast.damageMultiplier() : 1.0), true,
+                        !cooldownRecast || recast.allowCritical(),
+                        hit.hitChanceBonus(), hit.criticalChanceBonus(),
+                        cooldownRecast && !recast.allowCrowdControl() ? null : crowdControl,
+                        cooldownRecast && !recast.allowSpecialAttacks() ? java.util.Set.of() : hit.specialAttacks()));
+                if (SkillRuntimeConfig.values().observability().logPerTargetResults())
+                    RpgProject.LOGGER.info("[RPG Skill] damage skill={} target={}#{} targetMultiplier={} outcome={} damage={} specials={} cc={}",
+                            skill.id(), target.getType().toShortString(), target.getId(), targetMultiplier,
+                            result.outcome(), result.damage(), result.specialAttacks(), result.crowdControl());
+                if (result.outcome() != com.zexqm.rpgproject.rpg.combat.RpgDamageResult.Outcome.HIT) continue;
+            }
             successfulHit = true;
+            if (hit.defensive().active()) {
+                target.getCapability(RpgCombatStateProvider.DATA).ifPresent(state -> {
+                    state.activateManaShield(hit.defensive().manaShieldTicks(), hit.defensive().manaShieldRatio());
+                    state.activateResistanceBuff(hit.defensive().resistanceTicks(), hit.defensive().resistanceBonus());
+                });
+                RpgProject.LOGGER.info("[RPG Skill] defensive skill={} target={}#{} manaShield={} shieldTicks={} resistance={} resistanceTicks={}",
+                        skill.id(), target.getType().toShortString(), target.getId(),
+                        hit.defensive().manaShieldRatio(), hit.defensive().manaShieldTicks(),
+                        hit.defensive().resistanceBonus(), hit.defensive().resistanceTicks());
+            }
+            if (hit.health().active()) {
+                boolean casterTarget = target == context.caster();
+                float before = target.getHealth();
+                float requested = (float) (target.getMaxHealth() * hit.health().recoveryPercent(casterTarget)
+                        + hit.health().flatRecovery(casterTarget));
+                target.heal(requested);
+                float recovered = target.getHealth() - before;
+                if (SkillRuntimeConfig.values().observability().logPerTargetResults())
+                    RpgProject.LOGGER.info("[RPG Skill] heal skill={} target={}#{} requested={} recovered={} health={}/{}",
+                            skill.id(), target.getType().toShortString(), target.getId(), requested, recovered,
+                            target.getHealth(), target.getMaxHealth());
+            }
             if (hit.pullStrength() > 0 && !(target instanceof net.minecraft.world.entity.player.Player)
                     && !com.zexqm.rpgproject.rpg.mob.MobControlProfiles.resolve(target).hardCcImmune()) {
                 net.minecraft.world.phys.Vec3 towardCaster = context.caster().position()
@@ -456,18 +483,22 @@ public final class SkillRuntime {
     private static boolean validTarget(SkillDefinition skill, SkillExecutionContext context) {
         if (context.direction().lengthSqr() < 0.99 || context.direction().lengthSqr() > 1.01) return false;
         if (skill.targeting() == SkillTargetingType.ENTITY_TARGETED) {
-            if (context.targetEntityId() == null) return false;
+            boolean selfAllowed = skill.hits().stream().anyMatch(hit ->
+                    hit.targetDisposition() == SkillTargetDisposition.SELF
+                            || hit.targetDisposition() == SkillTargetDisposition.SELF_AND_ALLY);
+            if (context.targetEntityId() == null) return selfAllowed;
             var entity = playerLevel(context).getEntity(context.targetEntityId());
             if (entity instanceof net.minecraft.world.entity.LivingEntity living && living.isAlive()
-                    && living != context.caster() && living.distanceToSqr(context.caster()) <= skill.range() * skill.range()) {
+                    && validEntityTarget(skill, context.caster(), living)
+                    && living.distanceToSqr(context.caster()) <= skill.range() * skill.range()) {
                 net.minecraft.world.phys.Vec3 eyePos = context.caster().getEyePosition();
                 net.minecraft.world.phys.Vec3 targetCenter = living.getBoundingBox().getCenter();
                 net.minecraft.world.phys.HitResult los = context.caster().level().clip(new net.minecraft.world.level.ClipContext(
                     eyePos, targetCenter, net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE,
                     context.caster()));
-                return los.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK;
+                return los.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK || selfAllowed;
             }
-            return false;
+            return selfAllowed;
         }
         if (skill.targeting() == SkillTargetingType.CHAIN) {
             if (context.targetEntityId() == null) return false;
@@ -489,6 +520,19 @@ public final class SkillRuntime {
                     && context.groundPosition().distanceToSqr(context.origin()) <= skill.range() * skill.range();
         }
         return true;
+    }
+
+    private static boolean validEntityTarget(SkillDefinition skill, ServerPlayer caster,
+                                             net.minecraft.world.entity.LivingEntity target) {
+        SkillTargetDisposition disposition = skill.hits().isEmpty()
+                ? SkillTargetDisposition.HOSTILE : skill.hits().get(0).targetDisposition();
+        return switch (disposition) {
+            case HOSTILE -> target != caster && !caster.isAlliedTo(target);
+            case SELF -> target == caster;
+            case ALLY -> target != caster && target instanceof net.minecraft.world.entity.player.Player;
+            case SELF_AND_ALLY -> target == caster
+                    || target instanceof net.minecraft.world.entity.player.Player;
+        };
     }
 
     private static net.minecraft.server.level.ServerLevel playerLevel(SkillExecutionContext context) {

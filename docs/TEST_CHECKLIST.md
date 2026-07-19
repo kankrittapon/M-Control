@@ -13,7 +13,11 @@
 
 - [x] `gradlew test build` ผ่านล่าสุด 2026-07-19 (`55` unit tests)
 - [x] `gradlew runGameTestServer` ผ่านล่าสุด 2026-07-19 (`12/12` required GameTests)
-- [A] Catalog มี `32` รายการ (`13 playable`, `19 metadata-only`) หลังเพิ่ม Residual Lightning
+- [A] Catalog มี `32` รายการ (`19 playable`, `13 metadata-only`) หลังเพิ่ม Magical Shield
+- [A] Resurrection ยังคง `metadata-only`; lifecycle skeleton ต้องไม่ attach capability หรือดัก death event
+- [A] Magical Shield I-IV มี SP `3/5/8/12`, mana shield 60s และ resistance 30s
+- [ ] Client: Magical Shield rank IV หัก MP 25% ของ damage แล้วปล่อยส่วนที่เหลือเข้า HP
+- [ ] Client: Magical Shield เมื่อ MP ไม่พอและเมื่อ buff หมดเวลา
 - [A] Server startup 2026-07-19 โหลด Skill Definitions `28` definitions / `15` stable IDs; Lightning ranks I-V ไม่ถูก reject
 - [A] Damage formula, AoE resolver, links, resources, catalog validation, SP tiers และ production JSON
 - [A] Phase 5 SP budget: Fireball `100`, Explosion `225`, Concentrated `125`, Multiple Arrows `50`, Mana Absorption `125`, Lightning `150`, Lightning Chain `205`, Meteor Shower `500`, รวม `1480`
@@ -52,7 +56,7 @@
 - [x] Fireball ranks I-IV ใช้ SP `10 + 20 + 30 + 40 = 100`
 - [x] Fireball Explosion ranks I-III ใช้ SP `50 + 75 + 100 = 225`
 - [x] Concentrated Magic Arrow ranks I-III ใช้ SP `25 + 40 + 60 = 125`
-- [A] 13 playable skillsปัจจุบันใช้รวม `2515 SP`
+- [A] 19 playable skillsปัจจุบันใช้รวม `3189 SP`
 - [x] SP ไม่ติดลบเมื่อแต้มไม่พอ และ rejected upgrade ไม่หัก SP
 - [x] Downgrade คืนค่า SP ของ rank นั้น
 - [x] `/rpg skills reset` คืน learned ranks/spent SP ถูกต้อง
@@ -265,3 +269,26 @@ movement cancel, cooldown rejection, Boss/Unstoppable และ Player Stiffness
 หลักฐาน Client 2026-07-19: `side=1/-1`, `requested=2.0`, actual distance เต็ม `2.0`
 ในพื้นที่ว่าง และ `collisionClipped=true` ลด actual distance เหลือประมาณ `1.76-1.96`
 เมื่อมีสิ่งกีดขวาง. Rank III ประมวลผลไม่เกิน cap 7 targets ต่อ window ตาม definition.
+
+## 14. Healing Aura
+
+- [A] Ranks I-V ล็อก recovery `12/14/16/18/20%` และ cooldown `15/14/13/12/10s`
+- [A] SP ใช้ explicit source values `3/7/12/14/16` รวม `52`
+- [A] Heal-only payload ไม่เข้า Damage/Accuracy/Critical/CC pipeline
+- [~] Client: Rank V self HP ผ่าน `90.8/454 = 20%`; MP และ maximum clamp ยังไม่มีหลักฐาน
+- [ ] Client: optional player ally ในระยะฟื้นพร้อม caster
+- [~] Client: เล็ง Bat แล้ว heal เฉพาะ caster ผ่าน; ally นอกระยะ/หลังกำแพงยังไม่ได้ทดสอบ
+- [ ] Client: cooldown, relog และ camera/body facing ถูกต้อง
+
+คำสั่งและ expected logs: `PHASE6_HEALING_AURA_TEST.md`
+
+## 15. Healing Lighthouse
+
+- [A] I-IV เป็น channel 3 pulse และแยก self/ally HP recovery
+- [A] Rank IV ใช้ MP 220, cooldown 30s, self 30%, ally 20%, self MP 150 ต่อ pulse
+- [A] Target cap คือ caster + player allies 10 คน; Mob ไม่เข้า heal resolver
+- [A] Explicit SP `5/8/14/18` รวม 45
+- [~] Client: 3 pulse, HP 30% และ MP clamp ผ่าน; movement cancel/cooldown ยังไม่ได้ทดสอบ
+- [ ] Multiplayer: ally cap, radius และ MP recovery ไม่คูณตามจำนวน ally
+
+คำสั่งและ expected logs: `PHASE6_HEALING_LIGHTHOUSE_TEST.md`

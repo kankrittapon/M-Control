@@ -6,19 +6,22 @@
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/20.Resurrection.png",
   "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "unavailable_reason": "Deferred: awaiting dedicated downed-player/corpse lifecycle foundation",
   "ranks": [
     {
       "rank": 1,
-      "required_level": 45
+      "required_level": 45,
+      "sp_cost": 0
     },
     {
       "rank": 2,
-      "required_level": 50
+      "required_level": 50,
+      "sp_cost": 10
     },
     {
       "rank": 3,
-      "required_level": 54
+      "required_level": 54,
+      "sp_cost": 18
     }
   ],
   "prerequisites": [],

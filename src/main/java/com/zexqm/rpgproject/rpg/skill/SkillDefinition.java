@@ -128,7 +128,9 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
                       SkillImpactShape impactShape, int maxTargets,
                       double forwardOffset, double rightOffset,
                       double hitChanceBonus, double criticalChanceBonus,
-                      double additionalTargetDamagePenalty, double minimumTargetDamageMultiplier) {
+                      double additionalTargetDamagePenalty, double minimumTargetDamageMultiplier,
+                      SkillTargetDisposition targetDisposition, HealthPayload health,
+                      DefensivePayload defensive) {
         public Hit {
             if (timingTick < 0 || baseDamage < 0 || coefficient < 0 || radius < 0
                     || maxTargets < 0 || !Double.isFinite(forwardOffset) || !Double.isFinite(rightOffset)
@@ -139,6 +141,9 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
                     || minimumTargetDamageMultiplier < 0 || minimumTargetDamageMultiplier > 1)
                 throw new IllegalArgumentException("Invalid hit values");
             powerType = powerType == null ? RpgPowerType.NONE : powerType;
+            targetDisposition = targetDisposition == null ? SkillTargetDisposition.HOSTILE : targetDisposition;
+            health = health == null ? HealthPayload.NONE : health;
+            defensive = defensive == null ? DefensivePayload.NONE : defensive;
             specialAttacks = Set.copyOf(specialAttacks == null ? Set.of() : specialAttacks);
             statuses = List.copyOf(statuses == null ? List.of() : statuses);
             smashes = List.copyOf(smashes == null ? List.of() : smashes);
@@ -152,12 +157,64 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
                    List<SmashPayload> smashes) {
             this(timingTick, baseDamage, coefficient, radius, powerType, crowdControl,
                     null, 0, specialAttacks, statuses, smashes, ResourcePayload.NONE,
-                    SkillImpactShape.AUTO, 0, 0, 0, 0, 0, 0, 1);
+                    SkillImpactShape.AUTO, 0, 0, 0, 0, 0, 0, 1,
+                    SkillTargetDisposition.HOSTILE, HealthPayload.NONE, DefensivePayload.NONE);
         }
 
         public double targetDamageMultiplier(int targetIndex) {
             return Math.max(minimumTargetDamageMultiplier,
                     1.0 - additionalTargetDamagePenalty * Math.max(0, targetIndex));
+        }
+    }
+
+    public record DefensivePayload(int manaShieldTicks, double manaShieldRatio,
+                                   int resistanceTicks, double resistanceBonus) {
+        public static final DefensivePayload NONE = new DefensivePayload(0, 0, 0, 0);
+
+        public DefensivePayload {
+            if (manaShieldTicks < 0 || resistanceTicks < 0
+                    || !Double.isFinite(manaShieldRatio) || manaShieldRatio < 0 || manaShieldRatio > 1
+                    || !Double.isFinite(resistanceBonus) || resistanceBonus < 0 || resistanceBonus > 1)
+                throw new IllegalArgumentException("Invalid defensive payload");
+            if ((manaShieldRatio > 0) != (manaShieldTicks > 0)
+                    || (resistanceBonus > 0) != (resistanceTicks > 0))
+                throw new IllegalArgumentException("Defensive effect requires value and duration");
+        }
+
+        public boolean active() {
+            return manaShieldTicks > 0 || resistanceTicks > 0;
+        }
+    }
+
+    public record HealthPayload(double maxHealthRecoveryPercent, int flatHealthRecovery,
+                                double allyMaxHealthRecoveryPercent, int allyFlatHealthRecovery) {
+        public static final HealthPayload NONE = new HealthPayload(0, 0, 0, 0);
+
+        public HealthPayload(double maxHealthRecoveryPercent, int flatHealthRecovery) {
+            this(maxHealthRecoveryPercent, flatHealthRecovery,
+                    maxHealthRecoveryPercent, flatHealthRecovery);
+        }
+
+        public HealthPayload {
+            if (!Double.isFinite(maxHealthRecoveryPercent) || maxHealthRecoveryPercent < 0
+                    || maxHealthRecoveryPercent > 1 || flatHealthRecovery < 0
+                    || !Double.isFinite(allyMaxHealthRecoveryPercent)
+                    || allyMaxHealthRecoveryPercent < 0 || allyMaxHealthRecoveryPercent > 1
+                    || allyFlatHealthRecovery < 0)
+                throw new IllegalArgumentException("Invalid health recovery payload");
+        }
+
+        public boolean active() {
+            return maxHealthRecoveryPercent > 0 || flatHealthRecovery > 0
+                    || allyMaxHealthRecoveryPercent > 0 || allyFlatHealthRecovery > 0;
+        }
+
+        public double recoveryPercent(boolean caster) {
+            return caster ? maxHealthRecoveryPercent : allyMaxHealthRecoveryPercent;
+        }
+
+        public int flatRecovery(boolean caster) {
+            return caster ? flatHealthRecovery : allyFlatHealthRecovery;
         }
     }
 

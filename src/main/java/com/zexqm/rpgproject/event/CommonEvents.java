@@ -271,19 +271,11 @@ public final class CommonEvents {
                                     return result.success() ? 1 : 0;
                                 })))
                         .then(Commands.literal("force-upgrade").requires(source -> source.hasPermission(2))
-                                .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx -> {
-                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                    var data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
-                                    if (data == null) return 0;
-                                    ResourceLocation id = ResourceLocationArgument.getId(ctx, "skill");
-                                    var result = SkillLearningService.forceUpgradeForAcceptance(data, id);
-                                    CommonPacketSync.syncSkillProgress(player, data);
-                                    RpgProject.LOGGER.info("[RPG Skill] acceptance-force-upgrade player={} skill={} result={}",
-                                            player.getScoreboardName(), id, result);
-                                    ctx.getSource().sendSuccess(() -> Component.literal(
-                                            "Acceptance force-upgrade: " + result), false);
-                                    return result.success() ? 1 : 0;
-                                })))
+                                .then(Commands.argument("skill", ResourceLocationArgument.id())
+                                        .executes(ctx -> forceUpgradeSkill(ctx, null))
+                                        .then(Commands.argument("rank", IntegerArgumentType.integer(1))
+                                                .executes(ctx -> forceUpgradeSkill(ctx,
+                                                        IntegerArgumentType.getInteger(ctx, "rank"))))))
                         .then(Commands.literal("downgrade")
                                 .then(Commands.argument("skill", ResourceLocationArgument.id()).executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
@@ -324,18 +316,59 @@ public final class CommonEvents {
                                 data.healthTraining().level(), WeightCalculator.carried(player), WeightCalculator.capacity(data))), false);
                         player.getCapability(RpgCombatStateProvider.DATA).ifPresent(state ->
                                 player.displayClientMessage(Component.literal(String.format(
-                                        "Guard=%.1f/%.1f FG=%s(%d) SA=%s(%d) Iframe=%s(%d) CC=%.1f/%.1f Immune=%d Active=%s(%d) Down=%s Air=%s Frozen=%s Locked=%s Casting=%s",
+                                        "Guard=%.1f/%.1f FG=%s(%d) SA=%s(%d) Iframe=%s(%d) CC=%.1f/%.1f Immune=%d Active=%s(%d) Down=%s Air=%s Frozen=%s Locked=%s Casting=%s ManaShield=%.0f%%(%d) ResistBuff=%.0f%%(%d)",
                                         state.guard(), state.maximumGuard(), state.frontGuard(), state.frontGuardTicks(),
                                         state.superArmor(), state.superArmorTicks(), state.iframe(), state.iframeTicks(),
                                         state.ccPoints(), CombatConfig.values().maximumCcPoints(), state.ccImmunityTicks(),
                                         state.activeCc(), state.activeCcTicks(), state.downed(), state.floated(), state.frozen(),
-                                        state.actionLocked(), state.casting())), false));
+                                        state.actionLocked(), state.casting(), state.manaShieldRatio() * 100.0,
+                                        state.manaShieldTicks(), state.resistanceBuff() * 100.0,
+                                        state.resistanceBuffTicks())), false));
                     });
                     return 1;
                 })));
     }
 
     private static final String PERFORMANCE_TARGET_TAG = "rpg_project_perf_target";
+
+    private static int forceUpgradeSkill(CommandContext<CommandSourceStack> context, Integer requestedRank)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        var data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+        if (data == null) return 0;
+        ResourceLocation id = ResourceLocationArgument.getId(context, "skill");
+        var catalog = SkillCatalog.get(id);
+        if (catalog == null) {
+            context.getSource().sendFailure(Component.literal("Unknown skill: " + id));
+            return 0;
+        }
+        int targetRank = requestedRank == null
+                ? data.skillProgress().rank(id) + 1 : requestedRank;
+        if (targetRank > catalog.maximumRank()) {
+            context.getSource().sendFailure(Component.literal("Requested rank " + targetRank
+                    + " exceeds max rank " + catalog.maximumRank()));
+            return 0;
+        }
+        if (data.skillProgress().rank(id) >= targetRank) {
+            context.getSource().sendSuccess(() -> Component.literal(
+                    "Acceptance rank already " + data.skillProgress().rank(id) + "/" + targetRank), false);
+            return 1;
+        }
+        com.zexqm.rpgproject.rpg.skill.SkillLearningResult result = null;
+        while (data.skillProgress().rank(id) < targetRank) {
+            result = SkillLearningService.forceUpgradeForAcceptance(data, id);
+            if (!result.success()) break;
+        }
+        CommonPacketSync.syncSkillProgress(player, data);
+        int currentRank = data.skillProgress().rank(id);
+        RpgProject.LOGGER.info("[RPG Skill] acceptance-force-upgrade player={} skill={} requestedRank={} currentRank={} result={}",
+                player.getScoreboardName(), id, targetRank, currentRank, result);
+        var finalResult = result;
+        context.getSource().sendSuccess(() -> Component.literal(
+                "Acceptance force-upgrade target=" + targetRank + " current=" + currentRank
+                        + " result=" + finalResult), false);
+        return currentRank == targetRank ? 1 : 0;
+    }
 
     private static int debugCast(CommandContext<CommandSourceStack> context)
             throws com.mojang.brigadier.exceptions.CommandSyntaxException {

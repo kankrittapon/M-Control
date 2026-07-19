@@ -68,6 +68,25 @@ Run the unified acceptance checklist in `docs/TEST_CHECKLIST.md` before implemen
   are implemented. Client evidence capped `41 -> 7` at `199 us` and `34 -> 7` at `125 us`.
 - [x] Prepare the Phase 6 combat-performance checkpoint, verification evidence, and release notes
   before importing another skill.
+- [x] Source-audit and implement Healing Aura I-V with generic heal-only payloads, self plus optional
+  player-ally targeting, explicit 52 SP progression, production definitions, and regression coverage.
+- [ ] Run Healing Aura Rank V client acceptance for self HP/MP recovery, ally filtering, line of sight,
+  cooldown persistence, and camera-independent body facing.
+- [x] Confirm Healing Aura Rank V self HP recovery (`90.8/454 = 20%`), mob rejection, heal-only
+  execution, auto-draw, hit tick, recovery, and completion from client logs.
+- [x] Source-audit and implement Healing Lighthouse I-IV with three support pulses, separate self/ally
+  HP recovery, once-per-pulse caster MP recovery, ally-only AoE filtering, and regression coverage.
+- [ ] Run Healing Lighthouse Rank IV client acceptance for three pulses, movement cancel, resource
+  accounting, cooldown, Mob exclusion, and multiplayer ally behavior.
+- [x] Confirm Healing Lighthouse Rank IV three-pulse timing, 30% self HP recovery, HP/MP maximum
+  clamps, recovery completion, no damage path, and warmed resolver performance from client logs.
+- [x] Add Resurrection lifecycle API skeleton, verified rank metadata, and an explicit metadata-only
+  gate without intercepting player death or reusing combat CC downed state.
+- [x] Audit and implement Magical Shield I-IV with generic timed mana absorption, CC Resistance,
+  partial protection when MP is insufficient, structured logs, `/rpg status`, and regression coverage.
+- [ ] Run Magical Shield Rank IV client acceptance for 25% MP absorption, zero/insufficient MP,
+  60-second expiry, 30-second resistance expiry, cooldown rejection, and bypass damage.
+- [ ] Select and source-audit the next Wizard Main production skill after Magical Shield acceptance.
 
 ## Do Not Guess
 

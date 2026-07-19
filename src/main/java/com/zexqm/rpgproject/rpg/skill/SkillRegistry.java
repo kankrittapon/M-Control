@@ -169,6 +169,19 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsDouble(resource, "target_max_resource_drain_percent", 0),
                 GsonHelper.getAsDouble(resource, "drain_transfer_ratio", 0),
                 GsonHelper.getAsBoolean(resource, "recover_once_per_hit_window", true));
+        JsonObject health = object(root, "health");
+        double selfHealthPercent = GsonHelper.getAsDouble(health, "max_health_recovery_percent", 0);
+        int selfFlatHealth = GsonHelper.getAsInt(health, "flat_health_recovery", 0);
+        SkillDefinition.HealthPayload healthPayload = new SkillDefinition.HealthPayload(
+                selfHealthPercent, selfFlatHealth,
+                GsonHelper.getAsDouble(health, "ally_max_health_recovery_percent", selfHealthPercent),
+                GsonHelper.getAsInt(health, "ally_flat_health_recovery", selfFlatHealth));
+        JsonObject defensive = object(root, "defensive");
+        SkillDefinition.DefensivePayload defensivePayload = new SkillDefinition.DefensivePayload(
+                GsonHelper.getAsInt(defensive, "mana_shield_ticks", 0),
+                GsonHelper.getAsDouble(defensive, "mana_shield_ratio", 0),
+                GsonHelper.getAsInt(defensive, "resistance_ticks", 0),
+                GsonHelper.getAsDouble(defensive, "resistance_bonus", 0));
         return new SkillDefinition.Hit(GsonHelper.getAsInt(root, "timing_tick"),
                 GsonHelper.getAsDouble(root, "base_damage", 0), GsonHelper.getAsDouble(root, "coefficient", 1),
                 GsonHelper.getAsDouble(root, "radius", 0), value(RpgPowerType.class, root, "power_type", RpgPowerType.NONE),
@@ -182,7 +195,9 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsDouble(root, "hit_chance_bonus", 0),
                 GsonHelper.getAsDouble(root, "critical_chance_bonus", 0),
                 GsonHelper.getAsDouble(root, "additional_target_damage_penalty", defaultTargetPenalty),
-                GsonHelper.getAsDouble(root, "minimum_target_damage_multiplier", defaultMinimumTargetMultiplier));
+                GsonHelper.getAsDouble(root, "minimum_target_damage_multiplier", defaultMinimumTargetMultiplier),
+                value(SkillTargetDisposition.class, root, "target_disposition", SkillTargetDisposition.HOSTILE),
+                healthPayload, defensivePayload);
     }
 
     private static JsonObject object(JsonObject root, String key) {

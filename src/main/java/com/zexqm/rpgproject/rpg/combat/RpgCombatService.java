@@ -53,7 +53,7 @@ public final class RpgCombatService {
         }
 
         damage = RpgCombatMath.reducedDamage(damage, targetStats.damageReduction(), config);
-        float applied = (float) Math.max(0.0, damage);
+        float applied = ManaShieldService.absorb(target, (float) Math.max(0.0, damage)).remainingDamage();
         APPLYING_TAGGED_DAMAGE.set(true);
         boolean hurt;
         try {

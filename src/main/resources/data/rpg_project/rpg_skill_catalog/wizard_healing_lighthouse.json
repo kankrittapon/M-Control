@@ -5,24 +5,28 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/19.Healing Lighthouse.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,
-      "required_level": 27
+      "required_level": 27,
+      "sp_cost": 5
     },
     {
       "rank": 2,
-      "required_level": 34
+      "required_level": 34,
+      "sp_cost": 8
     },
     {
       "rank": 3,
-      "required_level": 41
+      "required_level": 41,
+      "sp_cost": 14
     },
     {
       "rank": 4,
-      "required_level": 48
+      "required_level": 48,
+      "sp_cost": 18
     }
   ],
   "prerequisites": [],

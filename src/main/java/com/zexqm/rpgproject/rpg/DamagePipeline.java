@@ -5,6 +5,7 @@ import com.zexqm.rpgproject.rpg.combat.CombatConfig;
 import com.zexqm.rpgproject.rpg.combat.RpgCombatMath;
 import com.zexqm.rpgproject.rpg.combat.RpgCombatService;
 import com.zexqm.rpgproject.rpg.combat.RpgCombatStateProvider;
+import com.zexqm.rpgproject.rpg.combat.ManaShieldService;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
@@ -42,6 +43,14 @@ public final class DamagePipeline {
                         CombatConfig.values().frontalGuardArcDegrees())
                         && state.absorbGuard(event.getAmount())).orElse(false);
         if (guarded) event.setAmount(0.0F);
+    }
+
+    @SubscribeEvent
+    public static void vanillaManaShield(LivingHurtEvent event) {
+        if (event.getEntity().level().isClientSide || RpgCombatService.applyingTaggedDamage()
+                || event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY)
+                || event.getAmount() <= 0) return;
+        event.setAmount(ManaShieldService.absorb(event.getEntity(), event.getAmount()).remainingDamage());
     }
 
     private DamagePipeline() {}

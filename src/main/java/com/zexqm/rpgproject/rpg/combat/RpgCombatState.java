@@ -24,6 +24,10 @@ public final class RpgCombatState {
     private int activeCcTicks;
     private boolean casting;
     private int airSmashLandingTicks;
+    private int manaShieldTicks;
+    private double manaShieldRatio;
+    private int resistanceBuffTicks;
+    private double resistanceBuff;
     private final Map<RpgStatusType, RpgStatusInstance> statuses = new EnumMap<>(RpgStatusType.class);
 
     public boolean frontGuard() { return frontGuardTicks > 0 && guard > 0; }
@@ -41,6 +45,10 @@ public final class RpgCombatState {
     public CrowdControlType activeCc() { return activeCc; }
     public int activeCcTicks() { return activeCcTicks; }
     public boolean casting() { return casting; }
+    public int manaShieldTicks() { return manaShieldTicks; }
+    public double manaShieldRatio() { return manaShieldTicks > 0 ? manaShieldRatio : 0.0; }
+    public int resistanceBuffTicks() { return resistanceBuffTicks; }
+    public double resistanceBuff() { return resistanceBuffTicks > 0 ? resistanceBuff : 0.0; }
     public boolean downed() { return activeCc == CrowdControlType.KNOCKDOWN || activeCc == CrowdControlType.BOUND; }
     public boolean floated() { return activeCc == CrowdControlType.FLOAT; }
     public boolean frozen() { return activeCc == CrowdControlType.FREEZE && activeCcTicks > 0; }
@@ -56,6 +64,16 @@ public final class RpgCombatState {
     public void activateIframe(int ticks) { iframeTicks = Math.max(iframeTicks, ticks); }
     public void activateGrabImmunity(int ticks) { grabImmuneTicks = Math.max(grabImmuneTicks, ticks); }
     public void setCasting(boolean value) { casting = value; }
+    public void activateManaShield(int ticks, double ratio) {
+        if (ticks <= 0 || ratio <= 0) return;
+        manaShieldTicks = Math.max(manaShieldTicks, ticks);
+        manaShieldRatio = Math.max(manaShieldRatio, Math.min(1.0, ratio));
+    }
+    public void activateResistanceBuff(int ticks, double value) {
+        if (ticks <= 0 || value <= 0) return;
+        resistanceBuffTicks = Math.max(resistanceBuffTicks, ticks);
+        resistanceBuff = Math.max(resistanceBuff, Math.min(1.0, value));
+    }
 
     public boolean absorbGuard(double damage) {
         if (!frontGuard()) return false;
@@ -99,6 +117,14 @@ public final class RpgCombatState {
         if (superArmorTicks > 0 && --superArmorTicks == 0) transition = true;
         if (iframeTicks > 0 && --iframeTicks == 0) transition = true;
         if (grabImmuneTicks > 0 && --grabImmuneTicks == 0) transition = true;
+        if (manaShieldTicks > 0 && --manaShieldTicks == 0) {
+            manaShieldRatio = 0.0;
+            transition = true;
+        }
+        if (resistanceBuffTicks > 0 && --resistanceBuffTicks == 0) {
+            resistanceBuff = 0.0;
+            transition = true;
+        }
         if (ccImmunityTicks > 0 && --ccImmunityTicks == 0) {
             ccPoints = 0.0;
             transition = true;
@@ -139,6 +165,8 @@ public final class RpgCombatState {
         activeCc = null;
         casting = false;
         airSmashLandingTicks = 0;
+        manaShieldTicks = resistanceBuffTicks = 0;
+        manaShieldRatio = resistanceBuff = 0.0;
         statuses.clear();
     }
 

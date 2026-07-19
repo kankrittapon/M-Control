@@ -6,9 +6,9 @@ Checkpoint date: 2026-07-19
 | --- | --- | --- |
 | World Core Combat Foundation | Complete | Shared damage, protection, CC, Smash, Status, Mob profiles |
 | Skill Runtime Foundation | Complete | State machine, resources, cooldowns, targeting, projectile and links |
-| Skill Catalog And Progression | Complete foundation | 32 Wizard Main catalog entries; production skills remain gated by data |
+| Skill Catalog And Progression | Complete foundation | 32 Wizard Main entries: 19 playable, 13 metadata-only |
 | Phase 5 Wizard Main Batch A | Acceptance | 8/8 stable skills have playable combat definitions |
-| Phase 6 Wizard Main Batch B | In progress | Production skills implemented through Earth's Response; performance gate passed |
+| Phase 6 Wizard Main Batch B | In progress | Implemented through Magical Shield; Resurrection safely deferred |
 | Skill Tree UI | Not started | Begins after server progression and enough production skills are stable |
 | Action Bar And Native Inputs | Not started | Native combos and quick slots must call the same stable skill ID |
 | GeckoLib Integration | Planned | See `AnimationP.md`; presentation must not control damage timing |
@@ -45,6 +45,18 @@ hops, server collision clipping, forward line hits, Floating into Air Attack, co
 The combat performance checkpoint for dense 10/25/50-target scenes now passes: bounded nearest
 selection preserved cap 7
 with 41 candidates in 199 us, and debug stress targets are progression-neutral and cleanup-safe.
+Healing Aura I-V is now the first production support skill. It introduces a heal-only payload and
+self-plus-optional-player targeting without routing recovery through the RPG damage pipeline.
+Healing Lighthouse I-IV extends that contract with three self-AoE support pulses, separate caster
+and ally recovery percentages, and once-per-pulse caster MP recovery.
+Resurrection now has a dedicated player-revival lifecycle skeleton and verified rank metadata. It
+remains metadata-only because combat CC downed state cannot represent death or corpse eligibility.
+Magical Shield I-IV adds a generic timed defensive payload. Current ranks redirect 10/15/20/25%
+of incoming damage to MP for 60 seconds and add 12/18/24/30% CC Resistance for 30 seconds. Tagged
+RPG and vanilla damage share one absorption service and cannot charge MP twice.
+
+Latest automated checkpoint: 73 unit tests passed, `build` passed, and all 14 required GameTests
+passed. Runtime reload accepted 85 definitions across 28 stable skill IDs.
 
 Checkpoint details: `docs/PHASE6_CHECKPOINT_2026-07-19.md`.
 

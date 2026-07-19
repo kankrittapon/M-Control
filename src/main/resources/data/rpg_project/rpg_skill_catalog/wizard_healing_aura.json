@@ -5,28 +5,33 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/18.Healing Aura.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,
-      "required_level": 10
+      "required_level": 10,
+      "sp_cost": 3
     },
     {
       "rank": 2,
-      "required_level": 19
+      "required_level": 19,
+      "sp_cost": 7
     },
     {
       "rank": 3,
-      "required_level": 27
+      "required_level": 27,
+      "sp_cost": 12
     },
     {
       "rank": 4,
-      "required_level": 36
+      "required_level": 36,
+      "sp_cost": 14
     },
     {
       "rank": 5,
-      "required_level": 45
+      "required_level": 45,
+      "sp_cost": 16
     }
   ],
   "prerequisites": [],

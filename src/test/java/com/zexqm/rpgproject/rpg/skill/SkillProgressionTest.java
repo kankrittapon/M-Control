@@ -296,11 +296,26 @@ class SkillProgressionTest {
                     assertEquals(List.of(0, 5, 7, 10, 12, 14, 19, 23, 24, 25), parsed.ranks().stream()
                             .map(SkillRankDefinition::skillPointCost).toList());
                     assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_healing_aura")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(3, 7, 12, 14, 16), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_healing_lighthouse")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(5, 8, 14, 18), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_magical_shield")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(3, 5, 8, 12), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
                 } else {
                     assertFalse(parsed.playable(), id.toString());
                 }
             }
-            assertEquals(16, playable);
+            assertEquals(19, playable);
         }
     }
 
@@ -322,7 +337,10 @@ class SkillProgressionTest {
         assertEquals(350, totalSkillPointCost("wizard_earthquake"));
         assertEquals(60, totalSkillPointCost("wizard_earth_s_response"));
         assertEquals(139, totalSkillPointCost("wizard_staff_attack"));
-        assertEquals(3064, totalSkillPointCost("wizard_fireball")
+        assertEquals(52, totalSkillPointCost("wizard_healing_aura"));
+        assertEquals(45, totalSkillPointCost("wizard_healing_lighthouse"));
+        assertEquals(28, totalSkillPointCost("wizard_magical_shield"));
+        assertEquals(3189, totalSkillPointCost("wizard_fireball")
                 + totalSkillPointCost("wizard_fireball_explosion")
                 + totalSkillPointCost("wizard_concentrated_magic_arrow")
                 + totalSkillPointCost("wizard_multiple_magic_arrows")
@@ -337,7 +355,10 @@ class SkillProgressionTest {
                 + totalSkillPointCost("wizard_residual_lightning")
                 + totalSkillPointCost("wizard_earthquake")
                 + totalSkillPointCost("wizard_earth_s_response")
-                + totalSkillPointCost("wizard_staff_attack"));
+                + totalSkillPointCost("wizard_staff_attack")
+                + totalSkillPointCost("wizard_healing_aura")
+                + totalSkillPointCost("wizard_healing_lighthouse")
+                + totalSkillPointCost("wizard_magical_shield"));
     }
 
     @Test
