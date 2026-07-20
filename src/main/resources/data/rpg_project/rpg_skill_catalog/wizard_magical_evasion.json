@@ -5,28 +5,32 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/27.Magical Evasion.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "playable": true,
   "ranks": [
     {
       "rank": 1,
-      "required_level": 1
+      "required_level": 1,
+      "sp_cost": 0
     },
     {
       "rank": 2,
-      "required_level": 11
+      "required_level": 11,
+      "sp_cost": 5
     },
     {
       "rank": 3,
-      "required_level": 20
+      "required_level": 20,
+      "sp_cost": 8
     },
     {
       "rank": 4,
-      "required_level": 31
+      "required_level": 31,
+      "sp_cost": 11
     },
     {
       "rank": 5,
-      "required_level": 40
+      "required_level": 40,
+      "sp_cost": 14
     }
   ],
   "prerequisites": [],

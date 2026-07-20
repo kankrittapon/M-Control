@@ -135,7 +135,11 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsDouble(root, "turn_speed", 0),
                 GsonHelper.getAsDouble(root, "cast_mp_recovery_percent", 0),
                 value(CasterMovementType.class, root, "caster_movement_type", CasterMovementType.NONE),
-                GsonHelper.getAsDouble(root, "caster_lateral_distance", 0));
+                GsonHelper.getAsDouble(root, "caster_lateral_distance", 0),
+                value(SkillAimMode.class, root, "aim_mode", SkillAimMode.INSTANT_AIM),
+                GsonHelper.getAsInt(root, "targeting_timeout_ticks",
+                        value(SkillAimMode.class, root, "aim_mode", SkillAimMode.INSTANT_AIM)
+                                == SkillAimMode.CONFIRM_TARGETING ? 60 : 0));
     }
 
     private static SkillDefinition.Hit parseHit(JsonObject root, double defaultTargetPenalty,
@@ -183,7 +187,28 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsInt(defensive, "resistance_ticks", 0),
                 GsonHelper.getAsDouble(defensive, "resistance_bonus", 0),
                 GsonHelper.getAsInt(defensive, "damage_reduction_ticks", 0),
-                GsonHelper.getAsDouble(defensive, "damage_reduction_ratio", 0));
+                GsonHelper.getAsDouble(defensive, "damage_reduction_ratio", 0),
+                GsonHelper.getAsInt(defensive, "sustained_resource_ticks", 0),
+                GsonHelper.getAsInt(defensive, "resource_interval_ticks", 0),
+                GsonHelper.getAsInt(defensive, "flat_mp_recovery", 0),
+                GsonHelper.getAsDouble(defensive, "movement_speed_bonus", 0),
+                GsonHelper.getAsInt(defensive, "speed_buff_ticks", 0),
+                GsonHelper.getAsDouble(defensive, "attack_speed_bonus", 0),
+                GsonHelper.getAsDouble(defensive, "casting_speed_bonus", 0),
+                GsonHelper.getAsDouble(defensive, "timed_movement_speed_bonus", 0),
+                GsonHelper.getAsInt(defensive, "cast_time_override_ticks", 0));
+        JsonObject taunt = object(root, "taunt_beacon");
+        Set<com.zexqm.rpgproject.rpg.mob.MobControlProfile> tauntProfiles =
+                EnumSet.noneOf(com.zexqm.rpgproject.rpg.mob.MobControlProfile.class);
+        for (JsonElement profile : array(taunt, "allowed_profiles"))
+            tauntProfiles.add(com.zexqm.rpgproject.rpg.mob.MobControlProfile.valueOf(
+                    profile.getAsString().toUpperCase(Locale.ROOT)));
+        SkillDefinition.TauntBeaconPayload tauntBeacon = new SkillDefinition.TauntBeaconPayload(
+                GsonHelper.getAsInt(taunt, "duration_ticks", 0),
+                GsonHelper.getAsInt(taunt, "refresh_interval_ticks", 0),
+                GsonHelper.getAsDouble(taunt, "radius", 0),
+                GsonHelper.getAsInt(taunt, "max_targets", 0),
+                GsonHelper.getAsDouble(taunt, "placement_distance", 0), tauntProfiles);
         return new SkillDefinition.Hit(GsonHelper.getAsInt(root, "timing_tick"),
                 GsonHelper.getAsDouble(root, "base_damage", 0), GsonHelper.getAsDouble(root, "coefficient", 1),
                 GsonHelper.getAsDouble(root, "radius", 0), value(RpgPowerType.class, root, "power_type", RpgPowerType.NONE),
@@ -199,7 +224,7 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsDouble(root, "additional_target_damage_penalty", defaultTargetPenalty),
                 GsonHelper.getAsDouble(root, "minimum_target_damage_multiplier", defaultMinimumTargetMultiplier),
                 value(SkillTargetDisposition.class, root, "target_disposition", SkillTargetDisposition.HOSTILE),
-                healthPayload, defensivePayload);
+                healthPayload, defensivePayload, tauntBeacon);
     }
 
     private static JsonObject object(JsonObject root, String key) {

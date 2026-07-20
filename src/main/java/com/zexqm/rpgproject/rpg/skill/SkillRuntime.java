@@ -26,9 +26,100 @@ import java.util.UUID;
 public final class SkillRuntime {
     private static final Map<UUID, ActiveCast> ACTIVE = new HashMap<>();
     private static final Map<UUID, PendingCast> PENDING = new HashMap<>();
+    private static final Map<UUID, TargetingSession> TARGETING = new HashMap<>();
     private static final Map<UUID, SkillLinkState> LINKS = new HashMap<>();
 
-    public static SkillCastResult cast(ServerPlayer player, ResourceLocation skillId, SkillExecutionContext context) {
+    public static SkillCastResult beginTargeting(ServerPlayer player, ResourceLocation skillId) {
+        RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+        RpgCombatState combat = player.getCapability(RpgCombatStateProvider.DATA).orElse(null);
+        SkillDefinition skill = learnedSkill(player, data, skillId);
+        if (data == null || combat == null)
+            return result(player, skillId, SkillCastResult.INVALID_STATE, "targeting capability missing");
+        if (skill == null)
+            return result(player, skillId, SkillCastResult.NOT_LEARNED, "targeting skill unavailable");
+        if (skill.debugOnly() && !player.hasPermissions(2))
+            return result(player, skillId, SkillCastResult.DEBUG_FORBIDDEN, "permission<2");
+        if (skill.aimMode() != SkillAimMode.CONFIRM_TARGETING)
+            return result(player, skillId, SkillCastResult.INVALID_STATE, "aim_mode=" + skill.aimMode());
+        if (data.actionState() != SkillActionState.READY || combat.actionLocked()
+                || ACTIVE.containsKey(player.getUUID()) || PENDING.containsKey(player.getUUID())
+                || TARGETING.containsKey(player.getUUID()))
+            return result(player, skillId, SkillCastResult.INVALID_STATE, "cannot enter targeting");
+        if (data.rpgClass() != skill.rpgClass())
+            return result(player, skillId, SkillCastResult.WRONG_CLASS, "player=" + data.rpgClass());
+        if (skill.specialization() != null && data.specialization() != skill.specialization())
+            return result(player, skillId, SkillCastResult.WRONG_SPECIALIZATION,
+                    "player=" + data.specialization());
+        if (!skill.weapons().test(data))
+            return result(player, skillId, SkillCastResult.WRONG_WEAPON,
+                    "requirements=" + skill.weapons());
+        if (PrimaryResourceType.forClass(data.rpgClass()) != skill.resourceType())
+            return result(player, skillId, SkillCastResult.WRONG_RESOURCE,
+                    "required=" + skill.resourceType());
+        var mana = player.getCapability(ManaProvider.MANA).orElse(null);
+        if (mana == null || mana.getMana() < skill.resourceCost() || data.stamina() < skill.staminaCost())
+            return result(player, skillId, SkillCastResult.INSUFFICIENT_RESOURCE,
+                    "targeting resource check");
+        long now = gameTime(player);
+        if (!data.cooldownReady(skill.id(), now) && !skill.cooldownRecast().enabled())
+            return result(player, skillId, SkillCastResult.COOLDOWN,
+                    "remaining=" + data.cooldownRemaining(skill.id(), now));
+        long expiresAt = now + skill.targetingTimeoutTicks();
+        TARGETING.put(player.getUUID(), new TargetingSession(skill, expiresAt));
+        data.startTargeting(skill.targetingTimeoutTicks());
+        RpgProject.LOGGER.info("[RPG Skill] targeting-start player={} skill={} expiresAt={}",
+                player.getScoreboardName(), skill.id(), expiresAt);
+        return result(player, skillId, SkillCastResult.STARTED, "targeting");
+    }
+
+    public static SkillCastResult confirmTargeting(ServerPlayer player, ResourceLocation skillId,
+                                                    SkillExecutionContext context) {
+        TargetingSession session = TARGETING.get(player.getUUID());
+        if (session == null || !session.skill.id().equals(skillId))
+            return result(player, skillId, SkillCastResult.INVALID_STATE, "no matching targeting session");
+        if (gameTime(player) >= session.expiresAt)
+            return result(player, skillId, SkillCastResult.INVALID_STATE, "targeting session expired");
+        if (!validTarget(session.skill, context)) {
+            Vec3 effectiveGround = session.skill.casterMovementType() == CasterMovementType.TELEPORT
+                    && context.groundPosition() != null
+                    ? clampTeleportGroundTarget(player, session.skill, context.groundPosition()) : null;
+            RpgProject.LOGGER.info("[RPG Skill] targeting-invalid player={} skill={} rawGround={} effectiveGround={} safeLanding={}",
+                    player.getScoreboardName(), skillId, context.groundPosition(), effectiveGround,
+                    effectiveGround == null ? null : findSafeTeleportLanding(player, effectiveGround, 4.0));
+            return result(player, skillId, SkillCastResult.INVALID_TARGET,
+                    "target confirmation range/direction/entity");
+        }
+        TARGETING.remove(player.getUUID());
+        player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(RpgPlayerData::cancelAction);
+        RpgProject.LOGGER.info("[RPG Skill] targeting-confirm player={} skill={} ground={} target={}",
+                player.getScoreboardName(), skillId, context.groundPosition(), context.targetEntityId());
+        return cast(player, skillId, context, true);
+    }
+
+    public static boolean updateChannelTarget(ServerPlayer player, ResourceLocation skillId,
+                                              SkillExecutionContext context) {
+        ActiveCast active = ACTIVE.get(player.getUUID());
+        if (active == null || active.recovering || !active.skill.id().equals(skillId)
+                || active.skill.aimMode() != SkillAimMode.CHANNEL_TARGETING
+                || !validTarget(active.skill, context)) {
+            RpgProject.LOGGER.info("[RPG Skill] retarget-rejected player={} skill={}",
+                    player.getScoreboardName(), skillId);
+            return false;
+        }
+        active.context = context;
+        RpgProject.LOGGER.info("[RPG Skill] retarget player={} skill={} tick={} ground={} target={}",
+                player.getScoreboardName(), skillId, active.tick + active.castTimeOffset,
+                context.groundPosition(), context.targetEntityId());
+        return true;
+    }
+
+    public static SkillCastResult cast(ServerPlayer player, ResourceLocation skillId,
+                                       SkillExecutionContext context) {
+        return cast(player, skillId, context, false);
+    }
+
+    private static SkillCastResult cast(ServerPlayer player, ResourceLocation skillId,
+                                        SkillExecutionContext context, boolean targetingConfirmed) {
         RpgProject.LOGGER.info("[RPG Skill] request player={} skill={} direction={} target={} ground={}",
                 player.getScoreboardName(), skillId, context.direction(), context.targetEntityId(), context.groundPosition());
         RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
@@ -43,6 +134,11 @@ public final class SkillRuntime {
         SkillDefinition skill = SkillRegistry.get(skillId, learnedRank);
         if (skill == null) return result(player, skillId, learnedRank <= 0
                 ? SkillCastResult.NOT_LEARNED : SkillCastResult.UNKNOWN_SKILL, "rank=" + learnedRank + " not registered");
+        boolean directionalTeleport = skill.casterMovementType() == CasterMovementType.TELEPORT
+                && context.forwardAxis() != 0;
+        if (skill.aimMode() == SkillAimMode.CONFIRM_TARGETING
+                && !targetingConfirmed && !directionalTeleport)
+            return result(player, skillId, SkillCastResult.INVALID_STATE, "target confirmation required");
         if (skill.debugOnly() && !player.hasPermissions(2))
             return result(player, skillId, SkillCastResult.DEBUG_FORBIDDEN, "permission<2");
         if (combat.actionLocked() || PENDING.containsKey(player.getUUID()))
@@ -70,7 +166,7 @@ public final class SkillRuntime {
                 return result(player, skillId, SkillCastResult.INVALID_TARGET,
                         "required link has no resolved impact anchor");
             context = new SkillExecutionContext(player, player.getEyePosition(), context.direction(),
-                    context.targetEntityId(), anchor, context.lateralSide());
+                    context.targetEntityId(), anchor, context.lateralSide(), context.forwardAxis());
         }
         boolean cooldownRecast = !data.cooldownReady(skill.id(), gameTime);
         if (cooldownRecast && !skill.cooldownRecast().enabled())
@@ -88,7 +184,7 @@ public final class SkillRuntime {
             if (!data.requestToggleDraw(SkillRuntimeConfig.values().drawTicks(),
                     SkillRuntimeConfig.values().sheatheTicks()))
                 return result(player, skillId, SkillCastResult.INVALID_STATE, "draw rejected");
-            PENDING.put(player.getUUID(), new PendingCast(skillId, context));
+            PENDING.put(player.getUUID(), new PendingCast(skillId, context, targetingConfirmed));
             return result(player, skillId, SkillCastResult.STARTED, "queued auto-draw after validation");
         }
         if (transitioning && !transitionTo(player, skill))
@@ -111,20 +207,42 @@ public final class SkillRuntime {
         }
         grantLink(skill, SkillLinkTiming.CAST_START, player, gameTime);
         if (!cooldownRecast) data.startCooldown(skill.id(), gameTime + skill.cooldownTicks());
-        data.startCast(skill.castTicks());
+        int castTimeOffset = castTimeOffset(skill, combat);
+        int effectiveCastTicks = Math.max(0, skill.castTicks() - castTimeOffset);
+        data.startCast(effectiveCastTicks);
         combat.setCasting(true);
-        ACTIVE.put(player.getUUID(), new ActiveCast(skill, context, cooldownRecast, 0, false, 0, false));
+        ACTIVE.put(player.getUUID(), new ActiveCast(skill, context, cooldownRecast, 0, false, 0, false,
+                castTimeOffset, effectiveCastTicks));
         if (skill.facingPolicy() == FacingPolicy.AIM_ON_CAST
                 || skill.facingPolicy() == FacingPolicy.TARGET_ON_CAST) {
             updateFacing(player, skill, context);
         }
-        return result(player, skillId, SkillCastResult.STARTED, "castTicks=" + skill.castTicks()
+        return result(player, skillId, SkillCastResult.STARTED, "castTicks=" + effectiveCastTicks
                 + " recoveryTicks=" + skill.recoveryTicks() + " mpCost=" + skill.resourceCost()
-                + " staminaCost=" + skill.staminaCost() + " cooldownRecast=" + cooldownRecast);
+                + " staminaCost=" + skill.staminaCost() + " cooldownRecast=" + cooldownRecast
+                + " castTimeOffset=" + castTimeOffset);
     }
 
     public static boolean tick(ServerPlayer player) {
+        TauntBeaconService.tick(player);
         boolean projectileActive = SkillProjectileRuntime.tick(player);
+        TargetingSession targeting = TARGETING.get(player.getUUID());
+        if (targeting != null) {
+            RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
+            RpgCombatState combat = player.getCapability(RpgCombatStateProvider.DATA).orElse(null);
+            if (data == null || combat == null || data.actionState() != SkillActionState.TARGETING
+                    || combat.actionLocked()
+                    || gameTime(player) >= targeting.expiresAt) {
+                TARGETING.remove(player.getUUID());
+                // A stance transition (for example Tab -> SHEATHING) owns its own next state.
+                if (data != null && data.actionState() == SkillActionState.TARGETING)
+                    data.cancelAction();
+                RpgProject.LOGGER.info("[RPG Skill] targeting-cancel player={} skill={} reason={}",
+                        player.getScoreboardName(), targeting.skill.id(),
+                        combat != null && combat.actionLocked() ? "action_lock" : "timeout/state");
+            }
+            return true;
+        }
         PendingCast pending = PENDING.get(player.getUUID());
         if (pending != null) {
             RpgPlayerData data = player.getCapability(RpgPlayerDataProvider.DATA).orElse(null);
@@ -136,8 +254,8 @@ public final class SkillRuntime {
                 PENDING.remove(player.getUUID());
                 SkillExecutionContext refreshed = new SkillExecutionContext(player, player.getEyePosition(),
                         pending.context.direction(), pending.context.targetEntityId(), pending.context.groundPosition(),
-                        pending.context.lateralSide());
-                cast(player, pending.skillId, refreshed);
+                        pending.context.lateralSide(), pending.context.forwardAxis());
+                cast(player, pending.skillId, refreshed, pending.targetingConfirmed);
                 return true;
             }
             return true;
@@ -145,7 +263,7 @@ public final class SkillRuntime {
         ActiveCast active = ACTIVE.get(player.getUUID());
         if (active == null) return projectileActive;
         active.elapsedTicks++;
-        int timeoutTicks = active.skill.castTicks() + active.skill.recoveryTicks() + 100;
+        int timeoutTicks = active.effectiveCastTicks + active.skill.recoveryTicks() + 100;
         if (active.elapsedTicks > timeoutTicks) {
             RpgProject.LOGGER.warn("[RPG Skill] Force-cleared stale cast player={} skill={} elapsed={} timeout={}",
                     player.getUUID(), active.skill.id(), active.elapsedTicks, timeoutTicks);
@@ -163,14 +281,15 @@ public final class SkillRuntime {
                 active.context = applyCasterMovement(player, active.skill, active.context);
                 active.movementApplied = true;
             }
+            int logicalTick = active.tick + active.castTimeOffset;
             if (active.skill.facingPolicy() != FacingPolicy.NONE
-                    && active.tick <= firstHitTick(active.skill)) {
+                    && logicalTick <= firstHitTick(active.skill)) {
                 updateFacing(player, active.skill, active.context);
             }
             if (!active.cooldownRecast || active.skill.cooldownRecast().allowProtection())
-                applyProtection(active.skill, active.tick, combat, player);
+                applyProtection(active.skill, logicalTick, combat, player);
             for (SkillDefinition.Hit hit : active.skill.hits()) {
-                if (hit.timingTick() == active.tick) {
+                if (hit.timingTick() == logicalTick) {
                     if (active.skill.targeting() == SkillTargetingType.AIM_PROJECTILE)
                         SkillProjectileRuntime.spawn(active.skill, hit, active.context,
                                 active.cooldownRecast, gameTime(player));
@@ -178,7 +297,7 @@ public final class SkillRuntime {
                 }
             }
             active.tick++;
-            if (active.tick > active.skill.castTicks()) {
+            if (active.tick > active.effectiveCastTicks) {
                 combat.setCasting(false);
                 data.startRecovery(active.skill.recoveryTicks());
                 active.recovering = true;
@@ -199,18 +318,21 @@ public final class SkillRuntime {
     public static void cancel(ServerPlayer player) {
         ActiveCast active = ACTIVE.remove(player.getUUID());
         PendingCast pending = PENDING.remove(player.getUUID());
-        if (active != null || pending != null) RpgProject.LOGGER.info("[RPG Skill] cancel player={} skill={}",
-                player.getScoreboardName(), active != null ? active.skill.id() : pending.skillId());
+        TargetingSession targeting = TARGETING.remove(player.getUUID());
+        if (active != null || pending != null || targeting != null) RpgProject.LOGGER.info(
+                "[RPG Skill] cancel player={} skill={}", player.getScoreboardName(),
+                active != null ? active.skill.id() : pending != null ? pending.skillId() : targeting.skill.id());
         player.getCapability(RpgCombatStateProvider.DATA).ifPresent(state -> state.setCasting(false));
         player.getCapability(RpgPlayerDataProvider.DATA).ifPresent(RpgPlayerData::cancelAction);
     }
 
     private static SkillExecutionContext applyCasterMovement(ServerPlayer player, SkillDefinition skill,
                                                               SkillExecutionContext context) {
-        if (skill.casterMovementType() != CasterMovementType.SIDE_HOP
+        if (skill.casterMovementType() == CasterMovementType.NONE
                 || skill.casterLateralDistance() <= 0) return context;
         int side = context.lateralSide();
-        if (side == 0) {
+        int forwardAxis = context.forwardAxis();
+        if (skill.casterMovementType() == CasterMovementType.SIDE_HOP && side == 0) {
             RpgProject.LOGGER.info("[RPG Skill] side-hop skipped player={} skill={} reason=missing_direction",
                     player.getScoreboardName(), skill.id());
             return context;
@@ -218,25 +340,143 @@ public final class SkillRuntime {
         Vec3 forward = context.direction().multiply(1, 0, 1);
         if (forward.lengthSqr() <= 1.0e-6) return context;
         Vec3 right = new Vec3(-forward.z, 0, forward.x).normalize();
+        if (skill.casterMovementType() == CasterMovementType.TELEPORT)
+            return applyTeleport(player, skill, context, forward.normalize());
+        Vec3 moveDirection = skill.casterMovementType() == CasterMovementType.OMNI_DODGE
+                ? forward.normalize().scale(forwardAxis).add(right.scale(side)) : right.scale(side);
+        if (moveDirection.lengthSqr() <= 1.0e-6) moveDirection = forward.normalize();
         Vec3 before = player.position();
-        Vec3 requested = right.scale(skill.casterLateralDistance() * side);
+        Vec3 requested = moveDirection.normalize().scale(skill.casterLateralDistance());
         player.move(net.minecraft.world.entity.MoverType.SELF, requested);
         Vec3 actual = player.position().subtract(before);
         player.setDeltaMovement(0, Math.max(player.getDeltaMovement().y, 0.12), 0);
         player.hurtMarked = true;
         player.connection.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
         RpgProject.LOGGER.info(
-                "[RPG Skill] side-hop player={} skill={} side={} requested={} actual={} collisionClipped={}",
-                player.getScoreboardName(), skill.id(), side, skill.casterLateralDistance(),
+                "[RPG Skill] caster-move player={} skill={} type={} side={} forward={} requested={} actual={} collisionClipped={}",
+                player.getScoreboardName(), skill.id(), skill.casterMovementType(), side, forwardAxis, skill.casterLateralDistance(),
                 actual.horizontalDistance(), actual.horizontalDistance() + 1.0e-3 < requested.horizontalDistance());
         return new SkillExecutionContext(player, player.getEyePosition(), context.direction(),
-                context.targetEntityId(), context.groundPosition(), side);
+                context.targetEntityId(), context.groundPosition(), side, forwardAxis);
+    }
+
+    private static SkillExecutionContext applyTeleport(ServerPlayer player, SkillDefinition skill,
+                                                        SkillExecutionContext context, Vec3 forward) {
+        int axis = context.forwardAxis();
+        Vec3 requestedTarget;
+        if (axis == 0 && context.groundPosition() != null) {
+            Vec3 effectiveGround = clampTeleportGroundTarget(player, skill, context.groundPosition());
+            requestedTarget = findSafeTeleportLanding(player, effectiveGround, 4.0);
+            if (requestedTarget == null) {
+                RpgProject.LOGGER.info("[RPG Skill] teleport-rejected player={} skill={} reason=no_safe_landing ground={}",
+                        player.getScoreboardName(), skill.id(), effectiveGround);
+                return context;
+            }
+        } else {
+            requestedTarget = player.position().add(forward.scale(skill.casterLateralDistance()
+                    * (axis < 0 ? -1 : 1)));
+        }
+
+        Vec3 start = player.position();
+        Vec3 travel = requestedTarget.subtract(start);
+        Vec3 eyeStart = player.getEyePosition();
+        Vec3 traceEnd = axis == 0 && context.groundPosition() != null
+                ? clampTeleportGroundTarget(player, skill, context.groundPosition())
+                : requestedTarget.add(0, player.getEyeHeight(), 0);
+        var hit = player.level().clip(new net.minecraft.world.level.ClipContext(eyeStart, traceEnd,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+        boolean selectedSurface = axis == 0 && context.groundPosition() != null
+                && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
+                && hit.getLocation().distanceToSqr(clampTeleportGroundTarget(player, skill,
+                context.groundPosition())) <= 0.25;
+        boolean resolvedLedge = false;
+        if (axis != 0 && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            Vec3 ledgeProbe = hit.getLocation().add(travel.normalize().scale(0.65))
+                    .with(net.minecraft.core.Direction.Axis.Y, player.getY() + 4.0);
+            Vec3 ledge = findSafeTeleportLanding(player, ledgeProbe, 4.0);
+            if (ledge != null && ledge.y > player.getY() + 0.5
+                    && ledge.subtract(start).multiply(1, 0, 1).lengthSqr()
+                    <= skill.casterLateralDistance() * skill.casterLateralDistance()) {
+                requestedTarget = ledge;
+                travel = ledge.subtract(start);
+                resolvedLedge = true;
+            }
+        }
+        if (hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
+                && !selectedSurface && !resolvedLedge) {
+            double safeDistance = Math.max(0, hit.getLocation().distanceTo(eyeStart) - 0.65);
+            travel = travel.normalize().scale(Math.min(travel.length(), safeDistance));
+        }
+
+        Vec3 destination = start.add(travel);
+        Vec3 accepted = start;
+        for (int step = 0; step <= 8; step++) {
+            double scale = 1.0 - step * 0.125;
+            Vec3 candidate = start.add(destination.subtract(start).scale(scale));
+            if (player.level().noCollision(player, player.getBoundingBox().move(candidate.subtract(start)))) {
+                accepted = candidate;
+                break;
+            }
+        }
+        player.connection.teleport(accepted.x, accepted.y, accepted.z, player.getYRot(), player.getXRot());
+        player.setDeltaMovement(Vec3.ZERO);
+        player.hurtMarked = true;
+        RpgProject.LOGGER.info(
+                "[RPG Skill] teleport player={} skill={} axis={} requested={} actual={} collisionClipped={} ledge={}",
+                player.getScoreboardName(), skill.id(), axis, start.distanceTo(requestedTarget),
+                start.distanceTo(accepted), start.distanceTo(accepted) + 1.0e-3 < start.distanceTo(requestedTarget),
+                resolvedLedge);
+        return new SkillExecutionContext(player, player.getEyePosition(), context.direction(),
+                context.targetEntityId(), context.groundPosition(), context.lateralSide(), axis);
+    }
+
+    private static Vec3 findSafeTeleportLanding(ServerPlayer player, Vec3 selectedSurface,
+                                                 double maximumVerticalChange) {
+        int minSupportY = net.minecraft.util.Mth.floor(player.getY() - maximumVerticalChange) - 1;
+        int maxSupportY = net.minecraft.util.Mth.floor(player.getY() + maximumVerticalChange);
+        Vec3 best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int supportY = minSupportY; supportY <= maxSupportY; supportY++) {
+            var support = new net.minecraft.core.BlockPos(
+                    net.minecraft.util.Mth.floor(selectedSurface.x), supportY,
+                    net.minecraft.util.Mth.floor(selectedSurface.z));
+            var shape = player.level().getBlockState(support).getCollisionShape(player.level(), support);
+            if (shape.isEmpty()) continue;
+            double feetY = supportY + shape.max(net.minecraft.core.Direction.Axis.Y);
+            if (Math.abs(feetY - player.getY()) > maximumVerticalChange + 1.0e-6) continue;
+            Vec3 candidate = new Vec3(selectedSurface.x, feetY, selectedSurface.z);
+            if (!player.level().noCollision(player,
+                    player.getBoundingBox().move(candidate.subtract(player.position())))) continue;
+            double distance = Math.abs(feetY - selectedSurface.y);
+            if (distance < bestDistance) {
+                best = candidate;
+                bestDistance = distance;
+            }
+        }
+        return best;
+    }
+
+    private static Vec3 clampTeleportGroundTarget(ServerPlayer player, SkillDefinition skill, Vec3 requested) {
+        Vec3 origin = player.position();
+        Vec3 horizontal = requested.subtract(origin).multiply(1, 0, 1);
+        double maximum = skill.range();
+        if (horizontal.lengthSqr() <= maximum * maximum || horizontal.lengthSqr() < 1.0e-6D) {
+            return requested;
+        }
+        Vec3 clamped = horizontal.normalize().scale(maximum);
+        return new Vec3(origin.x + clamped.x, requested.y, origin.z + clamped.z);
     }
 
     public static boolean requestCancel(ServerPlayer player, SkillCancelTrigger trigger) {
+        if (TARGETING.containsKey(player.getUUID())) {
+            cancel(player);
+            return true;
+        }
         ActiveCast active = ACTIVE.get(player.getUUID());
         if (active == null) return true;
-        if (!active.skill.transitions().allows(trigger, active.tick, firstHitTick(active.skill))) {
+        if (!active.skill.transitions().allows(trigger, active.tick + active.castTimeOffset,
+                firstHitTick(active.skill))) {
             RpgProject.LOGGER.info("[RPG Skill] cancel-rejected player={} skill={} trigger={} tick={}",
                     player.getScoreboardName(), active.skill.id(), trigger, active.tick);
             return false;
@@ -251,7 +491,7 @@ public final class SkillRuntime {
     public static boolean movementCancelAllowed(ServerPlayer player) {
         ActiveCast active = ACTIVE.get(player.getUUID());
         return active != null && active.skill.transitions().allows(SkillCancelTrigger.MOVEMENT,
-                active.tick, firstHitTick(active.skill));
+                active.tick + active.castTimeOffset, firstHitTick(active.skill));
     }
 
     private static boolean transitionTo(ServerPlayer player, SkillDefinition incoming) {
@@ -259,7 +499,7 @@ public final class SkillRuntime {
         if (active == null) return true;
         if (!incoming.transitions().interruptsCasting()
                 || !active.skill.transitions().allows(SkillCancelTrigger.SKILL,
-                active.tick, firstHitTick(active.skill))) return false;
+                active.tick + active.castTimeOffset, firstHitTick(active.skill))) return false;
         return requestCancel(player, SkillCancelTrigger.SKILL);
     }
 
@@ -268,9 +508,19 @@ public final class SkillRuntime {
                 .orElse(skill.castTicks() + 1);
     }
 
+    static int castTimeOffset(SkillDefinition skill, RpgCombatState combat) {
+        return combat != null && combat.ignoresCastTime()
+                && skill.specialization() != com.zexqm.rpgproject.rpg.Specialization.AWAKENING
+                ? Math.min(skill.castTicks(), firstHitTick(skill)) : 0;
+    }
+
     private static void updateFacing(ServerPlayer player, SkillDefinition skill, SkillExecutionContext context) {
         net.minecraft.world.phys.Vec3 direction = context.direction();
-        if (skill.facingPolicy() == FacingPolicy.TARGET_ON_CAST && context.targetEntityId() != null) {
+        if (skill.casterMovementType() == CasterMovementType.TELEPORT
+                && context.forwardAxis() == 0 && context.groundPosition() != null) {
+            Vec3 destination = clampTeleportGroundTarget(player, skill, context.groundPosition());
+            direction = destination.subtract(player.position());
+        } else if (skill.facingPolicy() == FacingPolicy.TARGET_ON_CAST && context.targetEntityId() != null) {
             var target = player.serverLevel().getEntity(context.targetEntityId());
             if (target != null) direction = target.position().subtract(player.position());
         }
@@ -289,6 +539,7 @@ public final class SkillRuntime {
     public static void clearTransient(ServerPlayer player) {
         cancel(player);
         SkillProjectileRuntime.clear(player);
+        TauntBeaconService.clear(player);
         SkillLinkState links = LINKS.remove(player.getUUID());
         if (links != null) links.clear();
     }
@@ -300,12 +551,21 @@ public final class SkillRuntime {
 
     public static ResourceLocation activeSkillId(ServerPlayer player) {
         ActiveCast active = ACTIVE.get(player.getUUID());
-        return active == null ? null : active.skill.id();
+        if (active != null) return active.skill.id();
+        TargetingSession targeting = TARGETING.get(player.getUUID());
+        return targeting == null ? null : targeting.skill.id();
+    }
+
+    public static SkillAimMode aimMode(ServerPlayer player) {
+        ActiveCast active = ACTIVE.get(player.getUUID());
+        if (active != null) return active.skill.aimMode();
+        TargetingSession targeting = TARGETING.get(player.getUUID());
+        return targeting == null ? SkillAimMode.INSTANT_AIM : targeting.skill.aimMode();
     }
 
     public static int activeCastTicks(ServerPlayer player) {
         ActiveCast active = ACTIVE.get(player.getUUID());
-        return active == null ? 0 : active.skill.castTicks();
+        return active == null ? 0 : active.effectiveCastTicks;
     }
 
     private static void executeHit(SkillDefinition skill, SkillDefinition.Hit hit,
@@ -367,12 +627,22 @@ public final class SkillRuntime {
                     state.activateResistanceBuff(hit.defensive().resistanceTicks(), hit.defensive().resistanceBonus());
                     state.activateDamageReductionBuff(hit.defensive().damageReductionTicks(),
                             hit.defensive().damageReductionRatio());
+                    state.activateSustainedResource(hit.defensive().sustainedResourceTicks(),
+                            hit.defensive().resourceIntervalTicks(), hit.defensive().flatMpRecovery(),
+                            hit.defensive().movementSpeedBonus());
+                    state.activateSpeedBuff(hit.defensive().speedBuffTicks(),
+                            hit.defensive().attackSpeedBonus(), hit.defensive().castingSpeedBonus(),
+                            hit.defensive().timedMovementSpeedBonus());
+                    state.activateCastTimeOverride(hit.defensive().castTimeOverrideTicks());
                 });
-                RpgProject.LOGGER.info("[RPG Skill] defensive skill={} target={}#{} manaShield={} shieldTicks={} resistance={} resistanceTicks={} damageReduction={} damageReductionTicks={}",
+                RpgProject.LOGGER.info("[RPG Skill] defensive skill={} target={}#{} manaShield={} shieldTicks={} resistance={} resistanceTicks={} damageReduction={} damageReductionTicks={} speedTicks={} attackSpeed={} castingSpeed={} movementSpeed={} castTimeOverrideTicks={}",
                         skill.id(), target.getType().toShortString(), target.getId(),
                         hit.defensive().manaShieldRatio(), hit.defensive().manaShieldTicks(),
                         hit.defensive().resistanceBonus(), hit.defensive().resistanceTicks(),
-                        hit.defensive().damageReductionRatio(), hit.defensive().damageReductionTicks());
+                        hit.defensive().damageReductionRatio(), hit.defensive().damageReductionTicks(),
+                        hit.defensive().speedBuffTicks(), hit.defensive().attackSpeedBonus(),
+                        hit.defensive().castingSpeedBonus(), hit.defensive().timedMovementSpeedBonus(),
+                        hit.defensive().castTimeOverrideTicks());
             }
             if (hit.health().active()) {
                 boolean casterTarget = target == context.caster();
@@ -433,6 +703,9 @@ public final class SkillRuntime {
                         smashResult.status(), smashResult.extensionTicks());
             }
         }
+        if (successfulHit && hit.tauntBeacon().active()
+                && (!cooldownRecast || skill.cooldownRecast().allowResources()))
+            TauntBeaconService.summon(context.caster(), hit.tauntBeacon(), context.direction());
         if (successfulHit) grantLink(skill, SkillLinkTiming.SUCCESSFUL_HIT, context.caster(), gameTime);
     }
 
@@ -467,6 +740,17 @@ public final class SkillRuntime {
         return result;
     }
 
+    private static SkillDefinition learnedSkill(ServerPlayer player, RpgPlayerData data,
+                                                ResourceLocation skillId) {
+        if (data == null) return null;
+        SkillDefinition firstRank = SkillRegistry.get(skillId);
+        if (firstRank == null) return null;
+        int progressionRank = data.skillProgress().rank(skillId);
+        int learnedRank = firstRank.debugOnly() ? firstRank.rank()
+                : firstRank.innate() ? Math.max(firstRank.rank(), progressionRank) : progressionRank;
+        return SkillRegistry.get(skillId, learnedRank);
+    }
+
     private static void applyProtection(SkillDefinition skill, int tick, RpgCombatState state,
                                         ServerPlayer player) {
         for (SkillDefinition.ProtectionWindow window : skill.protectionWindows()) {
@@ -478,6 +762,7 @@ public final class SkillRuntime {
                 case FRONT_GUARD -> state.activateFrontGuard(2);
                 case SUPER_ARMOR -> state.activateSuperArmor(2);
                 case IFRAME -> state.activateIframe(2);
+                case PVE_IFRAME -> state.activatePveIframe(2);
                 case GRAB_IMMUNITY -> state.activateGrabImmunity(2);
             }
         }
@@ -485,6 +770,11 @@ public final class SkillRuntime {
 
     private static boolean validTarget(SkillDefinition skill, SkillExecutionContext context) {
         if (context.direction().lengthSqr() < 0.99 || context.direction().lengthSqr() > 1.01) return false;
+        if (skill.casterMovementType() == CasterMovementType.TELEPORT && context.forwardAxis() == 0) {
+            if (context.groundPosition() == null) return false;
+            Vec3 effectiveGround = clampTeleportGroundTarget(context.caster(), skill, context.groundPosition());
+            return findSafeTeleportLanding(context.caster(), effectiveGround, 4.0) != null;
+        }
         if (skill.targeting() == SkillTargetingType.ENTITY_TARGETED) {
             boolean selfAllowed = skill.hits().stream().anyMatch(hit ->
                     hit.targetDisposition() == SkillTargetDisposition.SELF
@@ -550,9 +840,12 @@ public final class SkillRuntime {
         private boolean recovering;
         private int elapsedTicks;
         private boolean movementApplied;
+        private final int castTimeOffset;
+        private final int effectiveCastTicks;
 
         private ActiveCast(SkillDefinition skill, SkillExecutionContext context, boolean cooldownRecast,
-                           int tick, boolean recovering, int elapsedTicks, boolean movementApplied) {
+                           int tick, boolean recovering, int elapsedTicks, boolean movementApplied,
+                           int castTimeOffset, int effectiveCastTicks) {
             this.skill = skill;
             this.context = context;
             this.cooldownRecast = cooldownRecast;
@@ -560,10 +853,14 @@ public final class SkillRuntime {
             this.recovering = recovering;
             this.elapsedTicks = elapsedTicks;
             this.movementApplied = movementApplied;
+            this.castTimeOffset = castTimeOffset;
+            this.effectiveCastTicks = effectiveCastTicks;
         }
     }
 
-    private record PendingCast(ResourceLocation skillId, SkillExecutionContext context) {}
+    private record PendingCast(ResourceLocation skillId, SkillExecutionContext context,
+                               boolean targetingConfirmed) {}
+    private record TargetingSession(SkillDefinition skill, long expiresAt) {}
 
     private SkillRuntime() {}
 }

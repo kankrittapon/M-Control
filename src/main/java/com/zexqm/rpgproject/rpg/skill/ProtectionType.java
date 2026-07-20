@@ -4,5 +4,6 @@ public enum ProtectionType {
     FRONT_GUARD,
     SUPER_ARMOR,
     IFRAME,
+    PVE_IFRAME,
     GRAB_IMMUNITY
 }

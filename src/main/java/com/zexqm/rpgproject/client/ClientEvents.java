@@ -7,6 +7,9 @@ import com.zexqm.rpgproject.network.RpgNetwork;
 import com.zexqm.rpgproject.network.ToggleCombatPacket;
 import com.zexqm.rpgproject.network.CancelSkillActionPacket;
 import com.zexqm.rpgproject.network.CastSkillRequestPacket;
+import com.zexqm.rpgproject.network.BeginSkillTargetingPacket;
+import com.zexqm.rpgproject.network.SkillTargetAimPacket;
+import com.zexqm.rpgproject.rpg.skill.SkillAimMode;
 import com.zexqm.rpgproject.rpg.skill.SkillCancelTrigger;
 import com.zexqm.rpgproject.rpg.skill.SkillActionState;
 import com.zexqm.rpgproject.rpg.skill.MovementPolicy;
@@ -44,6 +47,10 @@ import org.lwjgl.glfw.GLFW;
 public final class ClientEvents {
     private static final long DOUBLE_CLICK_MS = 350L;
     private static long lastLeftClickTime;
+    private static long lastForwardTapTime;
+    private static long suppressTeleportJumpUntil;
+    private static long targetingRequestExpiresAt;
+    private static ResourceLocation targetingRequestSkill;
     private static int lastLeftClickEntityId = -1;
     private static BlockPos lastLeftClickBlockPos;
     private static boolean movementCancelSent;
@@ -52,6 +59,10 @@ public final class ClientEvents {
             new ResourceLocation(RpgProject.MOD_ID, "wizard_earth_s_response");
     private static final ResourceLocation WIZARD_STAFF_ATTACK =
             new ResourceLocation(RpgProject.MOD_ID, "wizard_staff_attack");
+    private static final ResourceLocation MAGICAL_EVASION =
+            new ResourceLocation(RpgProject.MOD_ID, "wizard_magical_evasion");
+    private static final ResourceLocation TELEPORT =
+            new ResourceLocation(RpgProject.MOD_ID, "wizard_teleport");
 
     public static final KeyMapping TOGGLE_VIEW_MODE = new KeyMapping(
             "key.rpg_project.toggle_view_mode",
@@ -99,6 +110,7 @@ public final class ClientEvents {
 
         ClientCameraController.tick(minecraft);
         ClientControlState.updateMouseMovementMode(minecraft, TOGGLE_MOUSE_MOVEMENT.isDown());
+        if (ClientControlState.isThirdPerson()) synchronizeCombatHitResult(minecraft);
         // Phase 5: Auto-mantle (Set step height to 1.25 blocks so player steps up automatically)
         if (minecraft.player != null) {
             minecraft.player.setMaxUpStep(1.25F);
@@ -109,6 +121,22 @@ public final class ClientEvents {
         ClientCombatState.tick();
         ClientDebugHud.tick(minecraft);
         if (ClientSkillState.action() != SkillActionState.CASTING) movementCancelSent = false;
+        if (targetingRequestSkill != null && ClientSkillState.action() == SkillActionState.TARGETING) {
+            targetingRequestSkill = null;
+            targetingRequestExpiresAt = 0;
+        } else if (targetingRequestSkill != null
+                && System.currentTimeMillis() >= targetingRequestExpiresAt) {
+            targetingRequestSkill = null;
+            targetingRequestExpiresAt = 0;
+        }
+
+        if (combatInputActive()) {
+            // Shift/Ctrl are RPG combo and cursor modifiers while the weapon is drawn.
+            // Keep auto-move sprint state intact; only suppress vanilla key actions.
+            minecraft.options.keyShift.setDown(false);
+            minecraft.options.keySprint.setDown(false);
+            if (!ClientControlState.isThirdPerson()) synchronizeCombatHitResult(minecraft);
+        }
 
         if (ClientCombatState.actionLocked()) {
             ClientControlState.cancelAutoMove();
@@ -141,6 +169,48 @@ public final class ClientEvents {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.screen != null) {
             suppressNextLeftRelease = false;
+            return;
+        }
+
+        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && event.getAction() == GLFW.GLFW_PRESS
+                && (ClientSkillState.action() == SkillActionState.TARGETING
+                || targetingRequestSkill != null)) {
+            suppressNextLeftRelease = true;
+            ResourceLocation targetSkill = ClientSkillState.action() == SkillActionState.TARGETING
+                    ? ClientSkillState.activeSkill() : targetingRequestSkill;
+            if (ClientControlState.isMouseMovementMode() && targetSkill != null) {
+                ClientControlState.cancelAutoMove();
+                sendTargetAim(minecraft, targetSkill, true);
+                targetingRequestSkill = null;
+                targetingRequestExpiresAt = 0;
+            } else if (minecraft.player != null) {
+                minecraft.player.displayClientMessage(Component.literal("Hold Ctrl + LMB to confirm target"), true);
+            }
+            event.setCanceled(true);
+            return;
+        }
+
+        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                && event.getAction() == GLFW.GLFW_PRESS
+                && ClientSkillState.action() == SkillActionState.CASTING
+                && ClientSkillState.aimMode() == SkillAimMode.CHANNEL_TARGETING
+                && ClientControlState.isMouseMovementMode()
+                && ClientSkillState.activeSkill() != null) {
+            suppressNextLeftRelease = true;
+            sendTargetAim(minecraft, ClientSkillState.activeSkill(), false);
+            event.setCanceled(true);
+            return;
+        }
+
+        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT
+                && event.getAction() == GLFW.GLFW_PRESS
+                && (ClientSkillState.action() == SkillActionState.TARGETING
+                || targetingRequestSkill != null)) {
+            targetingRequestSkill = null;
+            targetingRequestExpiresAt = 0;
+            RpgNetwork.CHANNEL.sendToServer(new CancelSkillActionPacket(SkillCancelTrigger.MOVEMENT));
+            event.setCanceled(true);
             return;
         }
 
@@ -194,6 +264,49 @@ public final class ClientEvents {
         }
     }
 
+    @SubscribeEvent
+    public static void combatMovementSkill(InputEvent.Key event) {
+        if (event.getAction() != GLFW.GLFW_PRESS) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null || minecraft.player == null
+                || ClientSkillState.action() != SkillActionState.READY
+                || ClientCombatState.actionLocked()) return;
+
+        if (event.getKey() == GLFW.GLFW_KEY_SPACE && isShiftDown(minecraft)) {
+            suppressTeleportJumpUntil = System.currentTimeMillis() + 250L;
+            minecraft.options.keyJump.setDown(false);
+            int axis = minecraft.options.keyUp.isDown() ? 1
+                    : minecraft.options.keyDown.isDown() ? -1 : 0;
+            if (axis == 0) {
+                RpgNetwork.CHANNEL.sendToServer(new BeginSkillTargetingPacket(TELEPORT));
+                targetingRequestSkill = TELEPORT;
+                targetingRequestExpiresAt = System.currentTimeMillis() + 1000L;
+                minecraft.player.displayClientMessage(Component.literal("Teleport: select destination"), true);
+            } else {
+                ClientControlState.cancelAutoMove();
+                sendAimSkill(minecraft, TELEPORT, 0, axis);
+            }
+            return;
+        }
+
+        int side = event.getKey() == GLFW.GLFW_KEY_A ? -1 : event.getKey() == GLFW.GLFW_KEY_D ? 1 : 0;
+        int forward = event.getKey() == GLFW.GLFW_KEY_S ? -1 : 0;
+        boolean cast = (side != 0 || forward != 0) && isShiftDown(minecraft);
+        if (event.getKey() == GLFW.GLFW_KEY_W) {
+            long now = System.currentTimeMillis();
+            cast = now - lastForwardTapTime <= DOUBLE_CLICK_MS;
+            lastForwardTapTime = now;
+            if (cast) forward = 1;
+        }
+        if (!cast) return;
+
+        ClientControlState.cancelAutoMove();
+        sendAimSkill(minecraft, MAGICAL_EVASION, side, forward);
+        // Forge 1.20.1 InputEvent.Key is observational and cannot be canceled.
+        // The server-authoritative dodge replaces the movement produced by this key press.
+        if (event.isCancelable()) event.setCanceled(true);
+    }
+
     private static boolean tryDirectionalCombatSkill(Minecraft minecraft) {
         if (minecraft.player == null || minecraft.level == null
                 || ClientSkillState.action() != SkillActionState.READY
@@ -218,12 +331,28 @@ public final class ClientEvents {
     }
 
     private static void sendAimSkill(Minecraft minecraft, ResourceLocation skillId, int lateralSide) {
+        sendAimSkill(minecraft, skillId, lateralSide,
+                minecraft.options.keyUp.isDown() ? 1 : minecraft.options.keyDown.isDown() ? -1 : 0);
+    }
+
+    private static void sendAimSkill(Minecraft minecraft, ResourceLocation skillId,
+                                     int lateralSide, int forwardAxis) {
         ClientAim.AimResult aim = ClientAim.current(minecraft);
         Integer targetId = aim.entityHit() == null ? null : aim.entityHit().getEntity().getId();
         Vec3 ground = aim.blockHit() != null && aim.blockHit().getType() != HitResult.Type.MISS
                 ? aim.blockHit().getLocation() : aim.targetPoint();
         RpgNetwork.CHANNEL.sendToServer(new CastSkillRequestPacket(
-                skillId, aim.direction(), targetId, ground, lateralSide));
+                skillId, aim.direction(), targetId, ground, lateralSide, forwardAxis));
+    }
+
+    private static void sendTargetAim(Minecraft minecraft, ResourceLocation skillId, boolean confirm) {
+        ClientAim.AimResult aim = ClientAim.current(minecraft);
+        Integer targetId = aim.entityHit() == null ? null : aim.entityHit().getEntity().getId();
+        Vec3 ground = aim.blockHit() != null && aim.blockHit().getType() != HitResult.Type.MISS
+                ? aim.blockHit().getLocation() : aim.targetPoint();
+        RpgNetwork.CHANNEL.sendToServer(new SkillTargetAimPacket(
+                skillId, confirm, aim.direction(), targetId, ground));
+        spawnGroundClickMarker(minecraft, ground);
     }
 
     @SubscribeEvent
@@ -252,6 +381,8 @@ public final class ClientEvents {
 
     @SubscribeEvent
     public static void onMovementInput(MovementInputUpdateEvent event) {
+        if (combatInputActive()) event.getInput().shiftKeyDown = false;
+        if (System.currentTimeMillis() < suppressTeleportJumpUntil) event.getInput().jumping = false;
         MovementPolicy skillMovement = ClientSkillState.movement();
         boolean movementRequested = event.getInput().forwardImpulse != 0.0F
                 || event.getInput().leftImpulse != 0.0F || event.getInput().jumping
@@ -502,6 +633,26 @@ public final class ClientEvents {
         long window = minecraft.getWindow().getWindow();
         return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
                 || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+    }
+
+    private static boolean combatInputActive() {
+        return ClientSkillState.action() != SkillActionState.SHEATHED
+                && ClientSkillState.action() != SkillActionState.SHEATHING;
+    }
+
+    private static void synchronizeCombatHitResult(Minecraft minecraft) {
+        ClientAim.AimResult aim = ClientAim.current(minecraft);
+        double entityDistance = aim.entityHit() == null ? Double.MAX_VALUE
+                : aim.origin().distanceToSqr(aim.entityHit().getLocation());
+        double blockDistance = aim.blockHit() == null || aim.blockHit().getType() == HitResult.Type.MISS
+                ? Double.MAX_VALUE : aim.origin().distanceToSqr(aim.blockHit().getLocation());
+        if (entityDistance < blockDistance) {
+            minecraft.crosshairPickEntity = aim.entityHit().getEntity();
+            minecraft.hitResult = aim.entityHit();
+        } else {
+            minecraft.crosshairPickEntity = null;
+            minecraft.hitResult = aim.blockHit();
+        }
     }
 
     private static void spawnGroundClickMarker(Minecraft minecraft, Vec3 location) {

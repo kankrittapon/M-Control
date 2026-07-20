@@ -316,11 +316,48 @@ class SkillProgressionTest {
                     assertEquals(List.of(5, 9, 13, 18, 23), parsed.ranks().stream()
                             .map(SkillRankDefinition::skillPointCost).toList());
                     assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_spellbound_heart")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(7, 10, 12, 15, 18), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_speed_spell")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(5, 9, 14), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_sage_s_memory")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(10), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_magical_evasion")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(0, 5, 8, 11, 14), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_teleport")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(4, 9, 16), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_dagger_stab")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(0, 7, 12, 14, 16), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertEquals(List.of(1, 12, 24, 37, 49), parsed.ranks().stream()
+                            .map(SkillRankDefinition::requiredLevel).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
+                } else if (id.getPath().equals("wizard_magic_lighthouse")) {
+                    assertTrue(parsed.playable());
+                    assertEquals(List.of(25, 40, 60), parsed.ranks().stream()
+                            .map(SkillRankDefinition::skillPointCost).toList());
+                    assertTrue(parsed.prerequisites().isEmpty());
                 } else {
                     assertFalse(parsed.playable(), id.toString());
                 }
             }
-            assertEquals(20, playable);
+            assertEquals(27, playable);
         }
     }
 
@@ -345,7 +382,13 @@ class SkillProgressionTest {
         assertEquals(52, totalSkillPointCost("wizard_healing_aura"));
         assertEquals(45, totalSkillPointCost("wizard_healing_lighthouse"));
         assertEquals(28, totalSkillPointCost("wizard_magical_shield"));
-        assertEquals(3257, totalSkillPointCost("wizard_fireball")
+        assertEquals(28, totalSkillPointCost("wizard_speed_spell"));
+        assertEquals(10, totalSkillPointCost("wizard_sage_s_memory"));
+        assertEquals(38, totalSkillPointCost("wizard_magical_evasion"));
+        assertEquals(29, totalSkillPointCost("wizard_teleport"));
+        assertEquals(49, totalSkillPointCost("wizard_dagger_stab"));
+        assertEquals(125, totalSkillPointCost("wizard_magic_lighthouse"));
+        assertEquals(3598, totalSkillPointCost("wizard_fireball")
                 + totalSkillPointCost("wizard_fireball_explosion")
                 + totalSkillPointCost("wizard_concentrated_magic_arrow")
                 + totalSkillPointCost("wizard_multiple_magic_arrows")
@@ -364,7 +407,14 @@ class SkillProgressionTest {
                 + totalSkillPointCost("wizard_healing_aura")
                 + totalSkillPointCost("wizard_healing_lighthouse")
                 + totalSkillPointCost("wizard_magical_shield")
-                + totalSkillPointCost("wizard_protected_area"));
+                + totalSkillPointCost("wizard_protected_area")
+                + totalSkillPointCost("wizard_spellbound_heart")
+                + totalSkillPointCost("wizard_speed_spell")
+                + totalSkillPointCost("wizard_sage_s_memory")
+                + totalSkillPointCost("wizard_magical_evasion")
+                + totalSkillPointCost("wizard_teleport")
+                + totalSkillPointCost("wizard_dagger_stab")
+                + totalSkillPointCost("wizard_magic_lighthouse"));
     }
 
     @Test

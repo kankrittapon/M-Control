@@ -5,28 +5,32 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/1.Dagger Stab.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "playable": true,
   "ranks": [
     {
       "rank": 1,
-      "required_level": 1
+      "required_level": 1,
+      "sp_cost": 0
     },
     {
       "rank": 2,
-      "required_level": 2
+      "required_level": 12,
+      "sp_cost": 7
     },
     {
       "rank": 3,
-      "required_level": 24
+      "required_level": 24,
+      "sp_cost": 12
     },
     {
       "rank": 4,
-      "required_level": 37
+      "required_level": 37,
+      "sp_cost": 14
     },
     {
       "rank": 5,
-      "required_level": 49
+      "required_level": 49,
+      "sp_cost": 16
     }
   ],
   "prerequisites": [],

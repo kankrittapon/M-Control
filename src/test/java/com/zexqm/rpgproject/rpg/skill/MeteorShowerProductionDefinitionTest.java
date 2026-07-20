@@ -35,6 +35,7 @@ class MeteorShowerProductionDefinitionTest {
                 assertEquals(cooldown, skill.cooldownTicks());
                 assertEquals(castTicks, skill.castTicks());
                 assertEquals(SkillTargetingType.GROUND_AOE, skill.targeting());
+                assertEquals(SkillAimMode.CHANNEL_TARGETING, skill.aimMode());
                 assertEquals(MovementPolicy.LOCKED, skill.movementPolicy());
                 assertEquals(24.0, skill.range());
                 assertEquals(4, skill.hits().size());

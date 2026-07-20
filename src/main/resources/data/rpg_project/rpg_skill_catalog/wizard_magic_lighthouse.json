@@ -5,8 +5,9 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/24.Magic Lighthouse.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "sp_tier": "core",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,

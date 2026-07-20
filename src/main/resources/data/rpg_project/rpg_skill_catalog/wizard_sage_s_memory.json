@@ -5,9 +5,15 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/26.Sage's Memory.png",
-  "playable": false,
-  "unavailable_reason": "MCP ranks_count is 0; rank semantics, SP costs, prerequisites, and combat definition are unresolved",
-  "ranks": [],
+  "playable": true,
+  "unavailable_reason": "",
+  "ranks": [
+    {
+      "rank": 1,
+      "required_level": 20,
+      "sp_cost": 10
+    }
+  ],
   "prerequisites": [],
   "mutually_exclusive": []
 }

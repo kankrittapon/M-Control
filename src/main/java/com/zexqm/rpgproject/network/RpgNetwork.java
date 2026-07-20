@@ -6,7 +6,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class RpgNetwork {
-    private static final String PROTOCOL_VERSION = "4";
+    private static final String PROTOCOL_VERSION = "5";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(RpgProject.MOD_ID, "main"),
@@ -58,6 +58,14 @@ public final class RpgNetwork {
         CHANNEL.messageBuilder(RequestClientAimCastPacket.class, id)
                 .encoder(RequestClientAimCastPacket::encode).decoder(RequestClientAimCastPacket::decode)
                 .consumerMainThread(RequestClientAimCastPacket::handle).add();
+        id++;
+        CHANNEL.messageBuilder(BeginSkillTargetingPacket.class, id)
+                .encoder(BeginSkillTargetingPacket::encode).decoder(BeginSkillTargetingPacket::decode)
+                .consumerMainThread(BeginSkillTargetingPacket::handle).add();
+        id++;
+        CHANNEL.messageBuilder(SkillTargetAimPacket.class, id)
+                .encoder(SkillTargetAimPacket::encode).decoder(SkillTargetAimPacket::decode)
+                .consumerMainThread(SkillTargetAimPacket::handle).add();
     }
 
     private RpgNetwork() {

@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,8 +75,13 @@ public final class ClientDebugHud {
         String skill = ClientSkillState.activeSkill() == null
                 ? "-" : ClientSkillState.activeSkill().getPath();
         lines.add("Combat: " + ClientRpgData.inCombat() + " / " + ClientSkillState.action());
-        lines.add("Skill: " + skill + "  ticks=" + ClientSkillState.actionTicks());
+        lines.add("Skill: " + skill + "  ticks=" + ClientSkillState.actionTicks()
+                + " aim=" + ClientSkillState.aimMode());
         lines.add("Move: " + ClientSkillState.movement() + " / " + ClientControlState.getMovementState());
+        lines.add(String.format(Locale.ROOT, "Speed: %.2f b/s  MoveAttr=%.4f AtkAttr=%.2f",
+                player.getDeltaMovement().horizontalDistance() * 20.0,
+                player.getAttributeValue(Attributes.MOVEMENT_SPEED),
+                player.getAttributeValue(Attributes.ATTACK_SPEED)));
         lines.add(String.format(Locale.ROOT, "HP: %.1f/%.1f", player.getHealth(), player.getMaxHealth()));
         lines.add("MP: " + ClientMana.mana() + "/" + ClientMana.maxMana());
         lines.add(String.format(Locale.ROOT, "Stamina: %.1f/%.1f",

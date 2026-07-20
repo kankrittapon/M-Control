@@ -31,7 +31,7 @@ Generic MCP `cost` is not treated as SP because several Wizard records use it fo
 - Lightning, Basic ranks I-V: 150 SP total.
 - Lightning Chain, Core ranks I-IV: 205 SP total.
 - First three skills subtotal: 450 SP.
-- Current twenty playable skills total: 3257 SP, including Meteor Shower's Ultimate-tier 500 SP,
+- Current twenty-seven playable skills total: 3598 SP, including Meteor Shower's Ultimate-tier 500 SP,
   Freeze's Basic-tier 150 SP, Frigid Fog's Core-tier 205 SP, Blizzard's Advanced-tier 350 SP,
   Lightning Storm's Core-tier 125 SP, and Residual Lightning's Core-tier 205 SP.
 - Earthquake uses the Advanced tier for 350 SP across ranks I-IV.
@@ -40,6 +40,11 @@ Generic MCP `cost` is not treated as SP because several Wizard records use it fo
 - Healing Lighthouse uses audited explicit costs `5/8/14/18` for 45 SP across ranks I-IV.
 - Magical Shield uses audited explicit costs `3/5/8/12` for 28 SP across ranks I-IV.
 - Protected Area uses audited explicit costs `5/9/13/18/23` for 68 SP across ranks I-V.
+- Spellbound Heart uses audited explicit costs `7/10/12/15/18` for 62 SP across ranks I-V.
+- Speed Spell uses audited explicit costs `5/9/14` for 28 SP across ranks I-III.
+- Sage's Memory uses its audited single-rank cost of 10 SP.
+- Dagger Stab uses audited explicit costs `0/7/12/14/16` for 49 SP across ranks I-V.
+- Magic Lighthouse uses the Core tier for 125 SP across ranks I-III.
 
 Client acceptance is tracked separately from catalog playability. This table is a balance checkpoint,
 not a promise that every future skill must use an unmodified tier cost.

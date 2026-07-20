@@ -3,6 +3,7 @@
   "class": "wizard",
   "rank": 2,
   "targeting": "ground_aoe",
+  "aim_mode": "channel_targeting",
   "weapons": {"weapon_set": "main", "main": true, "sub": true},
   "resource_type": "mp",
   "resource_cost": 250,

@@ -1,14 +1,14 @@
 # Project Phase Status
 
-Checkpoint date: 2026-07-20
+Checkpoint date: 2026-07-21
 
 | Phase | Status | Notes |
 | --- | --- | --- |
 | World Core Combat Foundation | Complete | Shared damage, protection, CC, Smash, Status, Mob profiles |
 | Skill Runtime Foundation | Complete | State machine, resources, cooldowns, targeting, projectile and links |
-| Skill Catalog And Progression | Complete foundation | 32 Wizard Main entries: 20 playable, 12 metadata-only |
+| Skill Catalog And Progression | Complete foundation | 32 Wizard Main entries: 27 playable, 5 metadata-only |
 | Phase 5 Wizard Main Batch A | Acceptance | 8/8 stable skills have playable combat definitions |
-| Phase 6 Wizard Main Batch B | In progress | Implemented through Protected Area; Resurrection safely deferred |
+| Phase 6 Wizard Main Batch B | In progress | 27 playable; Magic Lighthouse implemented, Resurrection safely deferred |
 | Skill Tree UI | Not started | Begins after server progression and enough production skills are stable |
 | Action Bar And Native Inputs | Not started | Native combos and quick slots must call the same stable skill ID |
 | GeckoLib Integration | Planned | See `AnimationP.md`; presentation must not control damage timing |
@@ -57,9 +57,24 @@ of incoming damage to MP for 60 seconds and add 12/18/24/30% CC Resistance for 3
 RPG and vanilla damage share one absorption service and cannot charge MP twice.
 Protected Area I-V adds generic timed area damage reduction: 50% for 4/5/6/7/8 seconds to self and
 up to 10 nearby player allies, with Super Armor during the cast.
+Spellbound Heart I-V adds a generic transient sustained-resource state: flat MP recovery every 200
+ticks and a composable +10% Movement Speed bonus for 5/6/7/8/10 minutes. Its 2025 Flow: Mana
+Augmentation synergy remains deferred behind a separate passive contract.
+Speed Spell I-III adds a generic 30-second area speed buff for Movement, Attack, and Casting Speed.
+The BDO rank contract is audited; BRPG radius and logical cast timing remain provisional for client testing.
+Sage's Memory adds a generic 15-second cast-time override. It removes eligible Main-skill wind-up while
+preserving multi-hit spacing, recovery, resources, cooldowns, and server-authoritative hit timing.
+The mouse-targeting foundation now separates instant aim, confirmed targeting, and channel retargeting.
+Teleport confirmation and Meteor Shower retargeting are implemented; client feel and rejection-path
+acceptance remain before applying these modes to additional production skills.
+Dagger Stab I-V is now the first production Sub-Weapon attack. It uses two short-range hit windows,
+Critical, Stiffness, Counter Attack, and the approved reduced-damage cooldown-recast policy.
+Magic Lighthouse I-III adds the generic server-owned taunt beacon contract with bounded nearest-mob
+selection, profile filtering, compatibility cancellation, replacement, expiry, and lifecycle cleanup.
 
-Latest automated checkpoint: 79 unit tests passed, `build` passed, and all 18 required GameTests
-passed. Runtime reload accepted 90 definitions across 29 stable skill IDs.
+Latest automated checkpoint: 92 unit tests passed and `build` passed. The previous World Core
+checkpoint passed all 18 required GameTests. Magic Lighthouse raises runtime content to 103 definitions
+across 32 stable skill IDs; Client acceptance remains its final gate.
 
 Checkpoint details: `docs/PHASE6_CHECKPOINT_2026-07-19.md`.
 

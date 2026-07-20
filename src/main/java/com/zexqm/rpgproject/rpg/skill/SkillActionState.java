@@ -4,6 +4,7 @@ public enum SkillActionState {
     SHEATHED,
     DRAWING,
     READY,
+    TARGETING,
     CASTING,
     RECOVERY,
     SHEATHING

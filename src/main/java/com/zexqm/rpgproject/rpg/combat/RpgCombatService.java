@@ -1,6 +1,7 @@
 package com.zexqm.rpgproject.rpg.combat;
 
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -18,6 +19,8 @@ public final class RpgCombatService {
         RpgCombatState state = target.getCapability(RpgCombatStateProvider.DATA).orElse(null);
         if (state == null) return RpgDamageResult.stopped(RpgDamageResult.Outcome.INVALID);
         if (state.iframe()) return RpgDamageResult.stopped(RpgDamageResult.Outcome.IFRAME);
+        if (state.pveIframe() && !(attacker instanceof Player))
+            return RpgDamageResult.stopped(RpgDamageResult.Outcome.IFRAME);
         if (state.frozen()) return RpgDamageResult.stopped(RpgDamageResult.Outcome.FROZEN_IMMUNE);
 
         CombatConfig.Values config = CombatConfig.values();

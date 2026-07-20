@@ -26,19 +26,23 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
                               TransitionPolicy transitions, double projectileSpeed,
                               FacingPolicy facingPolicy, double turnSpeed,
                               double castMpRecoveryPercent, CasterMovementType casterMovementType,
-                              double casterLateralDistance) {
+                              double casterLateralDistance, SkillAimMode aimMode,
+                              int targetingTimeoutTicks) {
     public SkillDefinition {
         if (id == null || targeting == null || weapons == null || resourceType == null
-                || movementPolicy == null || cancelPolicy == null || casterMovementType == null)
+                || movementPolicy == null || cancelPolicy == null || casterMovementType == null
+                || aimMode == null)
             throw new IllegalArgumentException("Missing skill field");
         if (rank < 0 || resourceCost < 0 || staminaCost < 0 || cooldownTicks < 0 || castTicks < 0
                 || recoveryTicks < 0 || range < 0 || radius < 0 || projectileSpeed < 0 || turnSpeed < 0
                 || !Double.isFinite(castMpRecoveryPercent) || castMpRecoveryPercent < 0
                 || castMpRecoveryPercent > 1 || !Double.isFinite(casterLateralDistance)
-                || casterLateralDistance < 0)
+                || casterLateralDistance < 0 || targetingTimeoutTicks < 0)
             throw new IllegalArgumentException("Negative skill value");
         if (targeting == SkillTargetingType.AIM_PROJECTILE && projectileSpeed <= 0)
             throw new IllegalArgumentException("Aim projectile skills require projectile_speed");
+        if (aimMode == SkillAimMode.CONFIRM_TARGETING && targetingTimeoutTicks < 1)
+            throw new IllegalArgumentException("Confirm-targeted skills require targeting_timeout_ticks");
         hits = List.copyOf(hits == null ? List.of() : hits);
         protectionWindows = List.copyOf(protectionWindows == null ? List.of() : protectionWindows);
         cooldownRecast = cooldownRecast == null ? CooldownRecastPolicy.DISABLED : cooldownRecast;
@@ -59,7 +63,8 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
                 cancelPolicy, range, radius, hits, protectionWindows, CooldownRecastPolicy.DISABLED,
                 SkillLinkPolicy.NONE, TransitionPolicy.fromLegacy(cancelPolicy),
                 targeting == SkillTargetingType.AIM_PROJECTILE ? 1.0 : 0.0,
-                FacingPolicy.NONE, 0.0, 0.0, CasterMovementType.NONE, 0.0);
+                FacingPolicy.NONE, 0.0, 0.0, CasterMovementType.NONE, 0.0,
+                SkillAimMode.INSTANT_AIM, 0);
     }
 
     public record TransitionPolicy(int movementCancelFromTick, boolean movementUntilFirstHit,
@@ -130,7 +135,7 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
                       double hitChanceBonus, double criticalChanceBonus,
                       double additionalTargetDamagePenalty, double minimumTargetDamageMultiplier,
                       SkillTargetDisposition targetDisposition, HealthPayload health,
-                      DefensivePayload defensive) {
+                      DefensivePayload defensive, TauntBeaconPayload tauntBeacon) {
         public Hit {
             if (timingTick < 0 || baseDamage < 0 || coefficient < 0 || radius < 0
                     || maxTargets < 0 || !Double.isFinite(forwardOffset) || !Double.isFinite(rightOffset)
@@ -144,6 +149,7 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
             targetDisposition = targetDisposition == null ? SkillTargetDisposition.HOSTILE : targetDisposition;
             health = health == null ? HealthPayload.NONE : health;
             defensive = defensive == null ? DefensivePayload.NONE : defensive;
+            tauntBeacon = tauntBeacon == null ? TauntBeaconPayload.NONE : tauntBeacon;
             specialAttacks = Set.copyOf(specialAttacks == null ? Set.of() : specialAttacks);
             statuses = List.copyOf(statuses == null ? List.of() : statuses);
             smashes = List.copyOf(smashes == null ? List.of() : smashes);
@@ -158,7 +164,8 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
             this(timingTick, baseDamage, coefficient, radius, powerType, crowdControl,
                     null, 0, specialAttacks, statuses, smashes, ResourcePayload.NONE,
                     SkillImpactShape.AUTO, 0, 0, 0, 0, 0, 0, 1,
-                    SkillTargetDisposition.HOSTILE, HealthPayload.NONE, DefensivePayload.NONE);
+                    SkillTargetDisposition.HOSTILE, HealthPayload.NONE, DefensivePayload.NONE,
+                    TauntBeaconPayload.NONE);
         }
 
         public double targetDamageMultiplier(int targetIndex) {
@@ -167,26 +174,67 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
         }
     }
 
+    public record TauntBeaconPayload(int durationTicks, int refreshIntervalTicks, double radius,
+                                     int maxTargets, double placementDistance,
+                                     Set<MobControlProfile> allowedProfiles) {
+        public static final TauntBeaconPayload NONE = new TauntBeaconPayload(0, 0, 0, 0, 0, Set.of());
+
+        public TauntBeaconPayload {
+            allowedProfiles = Set.copyOf(allowedProfiles == null ? Set.of() : allowedProfiles);
+            if (durationTicks < 0 || refreshIntervalTicks < 0 || radius < 0 || maxTargets < 0
+                    || placementDistance < 0 || !Double.isFinite(radius)
+                    || !Double.isFinite(placementDistance))
+                throw new IllegalArgumentException("Invalid taunt beacon payload");
+            if (durationTicks > 0 && (refreshIntervalTicks < 1 || radius <= 0 || maxTargets < 1))
+                throw new IllegalArgumentException("Active taunt beacon requires interval, radius, and targets");
+        }
+
+        public boolean active() { return durationTicks > 0; }
+    }
+
     public record DefensivePayload(int manaShieldTicks, double manaShieldRatio,
                                    int resistanceTicks, double resistanceBonus,
-                                   int damageReductionTicks, double damageReductionRatio) {
-        public static final DefensivePayload NONE = new DefensivePayload(0, 0, 0, 0, 0, 0);
+                                   int damageReductionTicks, double damageReductionRatio,
+                                   int sustainedResourceTicks, int resourceIntervalTicks,
+                                   int flatMpRecovery, double movementSpeedBonus,
+                                   int speedBuffTicks, double attackSpeedBonus,
+                                   double castingSpeedBonus, double timedMovementSpeedBonus,
+                                   int castTimeOverrideTicks) {
+        public static final DefensivePayload NONE = new DefensivePayload(0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        public DefensivePayload(int manaShieldTicks, double manaShieldRatio,
+                                int resistanceTicks, double resistanceBonus,
+                                int damageReductionTicks, double damageReductionRatio) {
+            this(manaShieldTicks, manaShieldRatio, resistanceTicks, resistanceBonus,
+                    damageReductionTicks, damageReductionRatio, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
 
         public DefensivePayload {
             if (manaShieldTicks < 0 || resistanceTicks < 0 || damageReductionTicks < 0
+                    || sustainedResourceTicks < 0 || resourceIntervalTicks < 0 || flatMpRecovery < 0
+                    || speedBuffTicks < 0 || castTimeOverrideTicks < 0
                     || !Double.isFinite(manaShieldRatio) || manaShieldRatio < 0 || manaShieldRatio > 1
                     || !Double.isFinite(resistanceBonus) || resistanceBonus < 0 || resistanceBonus > 1
                     || !Double.isFinite(damageReductionRatio)
-                    || damageReductionRatio < 0 || damageReductionRatio > 1)
+                    || damageReductionRatio < 0 || damageReductionRatio > 1
+                    || !Double.isFinite(movementSpeedBonus) || movementSpeedBonus < 0
+                    || !Double.isFinite(attackSpeedBonus) || attackSpeedBonus < 0
+                    || !Double.isFinite(castingSpeedBonus) || castingSpeedBonus < 0
+                    || !Double.isFinite(timedMovementSpeedBonus) || timedMovementSpeedBonus < 0)
                 throw new IllegalArgumentException("Invalid defensive payload");
             if ((manaShieldRatio > 0) != (manaShieldTicks > 0)
                     || (resistanceBonus > 0) != (resistanceTicks > 0)
-                    || (damageReductionRatio > 0) != (damageReductionTicks > 0))
+                    || (damageReductionRatio > 0) != (damageReductionTicks > 0)
+                    || (sustainedResourceTicks > 0) != (resourceIntervalTicks > 0 && flatMpRecovery > 0)
+                    || (speedBuffTicks > 0) != (attackSpeedBonus > 0 || castingSpeedBonus > 0
+                    || timedMovementSpeedBonus > 0))
                 throw new IllegalArgumentException("Defensive effect requires value and duration");
         }
 
         public boolean active() {
-            return manaShieldTicks > 0 || resistanceTicks > 0 || damageReductionTicks > 0;
+            return manaShieldTicks > 0 || resistanceTicks > 0 || damageReductionTicks > 0
+                    || sustainedResourceTicks > 0 || speedBuffTicks > 0 || castTimeOverrideTicks > 0;
         }
     }
 

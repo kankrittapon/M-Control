@@ -58,7 +58,10 @@ public final class DamagePipeline {
         }
         if (event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return;
         boolean protectedState = event.getEntity().getCapability(RpgCombatStateProvider.DATA)
-                .map(state -> state.iframe() || state.frozen()).orElse(false);
+                .map(state -> state.iframe() || state.frozen()
+                        || state.pveIframe() && event.getSource().getEntity() instanceof LivingEntity
+                        && !(event.getSource().getEntity() instanceof net.minecraft.world.entity.player.Player))
+                .orElse(false);
         if (protectedState) event.setCanceled(true);
     }
 

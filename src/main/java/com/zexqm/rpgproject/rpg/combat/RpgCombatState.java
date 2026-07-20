@@ -14,6 +14,7 @@ public final class RpgCombatState {
     private int frontGuardTicks;
     private int superArmorTicks;
     private int iframeTicks;
+    private int pveIframeTicks;
     private int grabImmuneTicks;
     private double guard = 100.0;
     private double maximumGuard = 100.0;
@@ -30,15 +31,28 @@ public final class RpgCombatState {
     private double resistanceBuff;
     private int damageReductionBuffTicks;
     private double damageReductionBuff;
+    private int sustainedResourceTicks;
+    private int resourceIntervalTicks;
+    private int resourceTickCountdown;
+    private int flatMpRecovery;
+    private int pendingMpRecovery;
+    private double movementSpeedBonus;
+    private int speedBuffTicks;
+    private double attackSpeedBonus;
+    private double castingSpeedBonus;
+    private double timedMovementSpeedBonus;
+    private int castTimeOverrideTicks;
     private final Map<RpgStatusType, RpgStatusInstance> statuses = new EnumMap<>(RpgStatusType.class);
 
     public boolean frontGuard() { return frontGuardTicks > 0 && guard > 0; }
     public boolean superArmor() { return superArmorTicks > 0; }
     public boolean iframe() { return iframeTicks > 0; }
+    public boolean pveIframe() { return pveIframeTicks > 0; }
     public boolean grabImmune() { return grabImmuneTicks > 0 || iframe(); }
     public int frontGuardTicks() { return frontGuardTicks; }
     public int superArmorTicks() { return superArmorTicks; }
     public int iframeTicks() { return iframeTicks; }
+    public int pveIframeTicks() { return pveIframeTicks; }
     public int grabImmuneTicks() { return grabImmuneTicks; }
     public double guard() { return guard; }
     public double maximumGuard() { return maximumGuard; }
@@ -53,6 +67,15 @@ public final class RpgCombatState {
     public double resistanceBuff() { return resistanceBuffTicks > 0 ? resistanceBuff : 0.0; }
     public int damageReductionBuffTicks() { return damageReductionBuffTicks; }
     public double damageReductionBuff() { return damageReductionBuffTicks > 0 ? damageReductionBuff : 0.0; }
+    public int sustainedResourceTicks() { return sustainedResourceTicks; }
+    public int flatMpRecovery() { return sustainedResourceTicks > 0 ? flatMpRecovery : 0; }
+    public double movementSpeedBonus() { return sustainedResourceTicks > 0 ? movementSpeedBonus : 0.0; }
+    public int speedBuffTicks() { return speedBuffTicks; }
+    public double attackSpeedBonus() { return speedBuffTicks > 0 ? attackSpeedBonus : 0.0; }
+    public double castingSpeedBonus() { return speedBuffTicks > 0 ? castingSpeedBonus : 0.0; }
+    public double timedMovementSpeedBonus() { return speedBuffTicks > 0 ? timedMovementSpeedBonus : 0.0; }
+    public int castTimeOverrideTicks() { return castTimeOverrideTicks; }
+    public boolean ignoresCastTime() { return castTimeOverrideTicks > 0; }
     public boolean downed() { return activeCc == CrowdControlType.KNOCKDOWN || activeCc == CrowdControlType.BOUND; }
     public boolean floated() { return activeCc == CrowdControlType.FLOAT; }
     public boolean frozen() { return activeCc == CrowdControlType.FREEZE && activeCcTicks > 0; }
@@ -66,6 +89,7 @@ public final class RpgCombatState {
     public void activateFrontGuard(int ticks) { frontGuardTicks = Math.max(frontGuardTicks, ticks); }
     public void activateSuperArmor(int ticks) { superArmorTicks = Math.max(superArmorTicks, ticks); }
     public void activateIframe(int ticks) { iframeTicks = Math.max(iframeTicks, ticks); }
+    public void activatePveIframe(int ticks) { pveIframeTicks = Math.max(pveIframeTicks, ticks); }
     public void activateGrabImmunity(int ticks) { grabImmuneTicks = Math.max(grabImmuneTicks, ticks); }
     public void setCasting(boolean value) { casting = value; }
     public void activateManaShield(int ticks, double ratio) {
@@ -86,6 +110,36 @@ public final class RpgCombatState {
         } else if (value == damageReductionBuff) {
             damageReductionBuffTicks = Math.max(damageReductionBuffTicks, ticks);
         }
+    }
+    public void activateSustainedResource(int ticks, int intervalTicks, int recovery, double speedBonus) {
+        if (ticks <= 0 || intervalTicks <= 0 || recovery <= 0 || speedBonus < 0) return;
+        sustainedResourceTicks = ticks;
+        resourceIntervalTicks = intervalTicks;
+        resourceTickCountdown = intervalTicks;
+        flatMpRecovery = recovery;
+        pendingMpRecovery = 0;
+        movementSpeedBonus = speedBonus;
+    }
+    public int consumePendingMpRecovery() {
+        int recovery = pendingMpRecovery;
+        pendingMpRecovery = 0;
+        return recovery;
+    }
+    public void activateSpeedBuff(int ticks, double attack, double casting, double movement) {
+        if (ticks <= 0 || attack < 0 || casting < 0 || movement < 0) return;
+        double incoming = Math.max(attack, Math.max(casting, movement));
+        double current = Math.max(attackSpeedBonus, Math.max(castingSpeedBonus, timedMovementSpeedBonus));
+        if (speedBuffTicks <= 0 || incoming > current) {
+            speedBuffTicks = ticks;
+            attackSpeedBonus = attack;
+            castingSpeedBonus = casting;
+            timedMovementSpeedBonus = movement;
+        } else if (incoming == current) {
+            speedBuffTicks = Math.max(speedBuffTicks, ticks);
+        }
+    }
+    public void activateCastTimeOverride(int ticks) {
+        castTimeOverrideTicks = Math.max(castTimeOverrideTicks, Math.max(0, ticks));
     }
 
     public boolean absorbGuard(double damage) {
@@ -129,6 +183,7 @@ public final class RpgCombatState {
         if (frontGuardTicks > 0 && --frontGuardTicks == 0) transition = true;
         if (superArmorTicks > 0 && --superArmorTicks == 0) transition = true;
         if (iframeTicks > 0 && --iframeTicks == 0) transition = true;
+        if (pveIframeTicks > 0 && --pveIframeTicks == 0) transition = true;
         if (grabImmuneTicks > 0 && --grabImmuneTicks == 0) transition = true;
         if (manaShieldTicks > 0 && --manaShieldTicks == 0) {
             manaShieldRatio = 0.0;
@@ -142,6 +197,22 @@ public final class RpgCombatState {
             damageReductionBuff = 0.0;
             transition = true;
         }
+        if (sustainedResourceTicks > 0) {
+            sustainedResourceTicks--;
+            if (--resourceTickCountdown <= 0) {
+                pendingMpRecovery += flatMpRecovery;
+                resourceTickCountdown = resourceIntervalTicks;
+            }
+            if (sustainedResourceTicks == 0) {
+                movementSpeedBonus = 0.0;
+                transition = true;
+            }
+        }
+        if (speedBuffTicks > 0 && --speedBuffTicks == 0) {
+            attackSpeedBonus = castingSpeedBonus = timedMovementSpeedBonus = 0.0;
+            transition = true;
+        }
+        if (castTimeOverrideTicks > 0 && --castTimeOverrideTicks == 0) transition = true;
         if (ccImmunityTicks > 0 && --ccImmunityTicks == 0) {
             ccPoints = 0.0;
             transition = true;
@@ -176,7 +247,7 @@ public final class RpgCombatState {
     }
 
     public void clear() {
-        frontGuardTicks = superArmorTicks = iframeTicks = grabImmuneTicks = 0;
+        frontGuardTicks = superArmorTicks = iframeTicks = pveIframeTicks = grabImmuneTicks = 0;
         ccImmunityTicks = ccChainResetTicks = activeCcTicks = 0;
         ccPoints = 0.0;
         activeCc = null;
@@ -184,6 +255,11 @@ public final class RpgCombatState {
         airSmashLandingTicks = 0;
         manaShieldTicks = resistanceBuffTicks = damageReductionBuffTicks = 0;
         manaShieldRatio = resistanceBuff = damageReductionBuff = 0.0;
+        sustainedResourceTicks = resourceIntervalTicks = resourceTickCountdown = flatMpRecovery = pendingMpRecovery = 0;
+        movementSpeedBonus = 0.0;
+        speedBuffTicks = 0;
+        attackSpeedBonus = castingSpeedBonus = timedMovementSpeedBonus = 0.0;
+        castTimeOverrideTicks = 0;
         statuses.clear();
     }
 

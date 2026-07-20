@@ -11,11 +11,19 @@
 
 ## 1. Automated Baseline
 
-- [x] `gradlew test build` ผ่านล่าสุด 2026-07-20 (`79` unit tests)
+- [x] `gradlew test build` ผ่านล่าสุด 2026-07-21 (`92` unit tests)
 - [x] `gradlew runGameTestServer` ผ่านล่าสุด 2026-07-20 (`18/18` required GameTests)
 - [x] Vanilla Combat Bridge Phase F deterministic probes ผ่าน front/side/rear สำหรับ Perfect Guard
 - [x] Live Zoglin/Zombie front melee, Skeleton rear projectile และ Creeper rear explosion ตรงตามกฎ
-- [A] Catalog มี `32` รายการ (`20 playable`, `12 metadata-only`) หลังเพิ่ม Protected Area
+- [A] Spellbound Heart I-V definitions: 30s cooldown, 5/6/7/8/10m duration, MP pulse every 200 ticks,
+  recovery 50/100/150/200/250 and Movement Speed +10%
+- [ ] Client: Spellbound Heart Rank V ฟื้น 250 MP ที่ 10 วินาทีโดยไม่ใช้ MP ตอนร่าย และ speed กลับปกติเมื่อหมด
+- [A] Speed Spell I-III: MP `120/130/140`, cooldown `90/75/50s`, speed `10/15/20%` for `30s`
+- [ ] Client: Speed Spell III applies to self, expires after 30s, and restores all three attributes
+- [ ] Multiplayer: Speed Spell affects at most 10 nearby allies and excludes players outside radius 15
+- [A] Sage's Memory: Level 20, SP 10, cooldown 4200 ticks, instant-cast state 300 ticks
+- [ ] Client: Sage's Memory removes only pre-hit wind-up and expires after 15 seconds
+- [A] Catalog มี `32` รายการ (`27 playable`, `5 metadata-only`) หลังเพิ่ม Magic Lighthouse
 - [A] Resurrection ยังคง `metadata-only`; lifecycle skeleton ต้องไม่ attach capability หรือดัก death event
 - [A] Magical Shield I-IV มี SP `3/5/8/12`, mana shield 60s และ resistance 30s
 - [x] Client: Magical Shield rank IV หัก MP 25% ของ damage แล้วปล่อยส่วนที่เหลือเข้า HP
@@ -70,7 +78,7 @@
 - [x] Fireball ranks I-IV ใช้ SP `10 + 20 + 30 + 40 = 100`
 - [x] Fireball Explosion ranks I-III ใช้ SP `50 + 75 + 100 = 225`
 - [x] Concentrated Magic Arrow ranks I-III ใช้ SP `25 + 40 + 60 = 125`
-- [A] 20 playable skillsปัจจุบันใช้รวม `3257 SP`
+- [A] 27 playable skillsปัจจุบันใช้รวม `3598 SP`
 - [x] SP ไม่ติดลบเมื่อแต้มไม่พอ และ rejected upgrade ไม่หัก SP
 - [x] Downgrade คืนค่า SP ของ rank นั้น
 - [x] `/rpg skills reset` คืน learned ranks/spent SP ถูกต้อง
@@ -306,3 +314,49 @@ movement cancel, cooldown rejection, Boss/Unstoppable และ Player Stiffness
 - [ ] Multiplayer: ally cap, radius และ MP recovery ไม่คูณตามจำนวน ally
 
 คำสั่งและ expected logs: `PHASE6_HEALING_LIGHTHOUSE_TEST.md`
+- [ ] Teleport: learn Rank III with `/rpg skill force-upgrade rpg_project:wizard_teleport 3`.
+- [ ] Teleport: in Combat Action Mode, `W + Shift + Space` moves forward and `S + Shift + Space` backward.
+- [ ] Teleport: press `Shift + Space` without W/S; HUD changes to `TARGETING` and no Stamina/cooldown is consumed yet.
+- [ ] Teleport: hold Ctrl and LMB a visible ground point within five seconds to confirm and teleport.
+- [ ] Teleport: LMB without Ctrl does not confirm/select an entity; RMB cancels targeting and returns to `READY`.
+- [ ] Teleport: targeting timeout returns to `READY` after five seconds without spending Stamina or starting cooldown.
+- [ ] Teleport: forged/direct ground cast without a targeting session is rejected with `target confirmation required`.
+- [ ] Teleport: destination clamps to 8 blocks and stops before walls/occupied collision boxes.
+- [ ] Teleport: each Rank III cast spends 20 Stamina and starts a 7-second cooldown.
+- [ ] Teleport: full Iframe is active during ticks 0-4 and camera/yaw do not move with the body.
+- [ ] Teleport: successful cast grants +10% Movement Speed for 10 seconds.
+
+## 16. Mouse Targeting Foundation
+
+- [A] Skill definitions support `INSTANT_AIM`, `CONFIRM_TARGETING`, and `CHANNEL_TARGETING`.
+- [A] Confirm targeting is server-authoritative, expires once, and consumes resources only after valid confirmation.
+- [A] Teleport uses confirm targeting for mouse destinations while W/S directional casts remain immediate.
+- [A] Meteor Shower uses channel targeting and accepts server-validated anchor updates during casting only.
+- [ ] Client: cast Meteor Shower, then use `Ctrl + LMB` on different ground points before each impact.
+- [ ] Client: logs show `retarget` before later `hit-window` entries and later impacts move to the newest anchor.
+- [ ] Client: out-of-range retarget logs `retarget-rejected`; earlier valid anchor remains active.
+- [ ] Client: channel retarget clicks never select entities or issue click-to-move commands.
+
+## 17. Dagger Stab
+
+- [A] Ranks I-V require both Wizard Main Weapon and Sub-Weapon and cost `0/7/12/14/16` SP.
+- [A] Two melee hit windows use coefficients `2.3452/2.5495/2.7386/2.9155/3.0822`.
+- [A] Normal cast has Critical `+100%`, Stiffness, Counter Attack, and maximum five targets.
+- [x] Client: Rank V produces hit windows at ticks `1/2` against a target within 3 blocks.
+- [ ] Client: removing the Wizard Dagger rejects the cast with `INVALID_WEAPON`.
+- [x] Client: recast during the 10-second cooldown starts at 35% coefficient without Critical,
+  Stiffness, or Counter Attack.
+- [ ] Client: body faces the aim on cast while the detached third-person camera remains still.
+- [x] Client: no runtime exception or stuck action state appears in `latest.log`.
+
+## 18. Magic Lighthouse
+
+- [A] Ranks I-III lock MP `75/65/55`, cooldown `40/35/30s`, and Core SP `25/40/60`.
+- [A] Generic taunt beacon owns duration, refresh interval, radius, cap, placement, and profiles.
+- [A] Recast replacement and logout/death/dimension cleanup are server-authoritative.
+- [A] Compatibility integrations can cancel retarget through `TauntBeaconTargetEvent`.
+- [ ] Client: Rank III spawns one placeholder for 20 seconds, two blocks ahead.
+- [ ] Client: Normal/Elite hostile mobs within 12 blocks target it; passive mobs and Boss do not.
+- [ ] Client: pulses never exceed ten accepted mobs and do not create duplicate placeholders.
+- [ ] Client: expiry/logout/dimension change removes the placeholder and clears runtime state.
+- [ ] Client: no exception or stale beacon appears in `latest.log`.

@@ -37,6 +37,7 @@ import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.entity.EntityAttributeModificationEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.phys.Vec3;
 import com.zexqm.rpgproject.registry.ModAttributes;
 import com.zexqm.rpgproject.rpg.ClassProfileManager;
@@ -73,8 +74,12 @@ import net.minecraftforge.network.PacketDistributor;
 import com.zexqm.rpgproject.network.CommonPacketSync;
 import net.minecraft.commands.CommandSourceStack;
 
+import java.util.UUID;
+
 @Mod.EventBusSubscriber(modid = RpgProject.MOD_ID)
 public final class CommonEvents {
+    private static final UUID SPEED_SPELL_ATTACK_SPEED_ID =
+            UUID.fromString("24f6067d-9aa4-4ac8-b5bd-6f69ec6ba206");
     @SubscribeEvent
     public static void addReloadListeners(AddReloadListenerEvent event) {
         event.addListener(new ClassProfileManager());
@@ -328,7 +333,7 @@ public final class CommonEvents {
                                 data.healthTraining().level(), WeightCalculator.carried(player), WeightCalculator.capacity(data))), false);
                         player.getCapability(RpgCombatStateProvider.DATA).ifPresent(state ->
                                 player.displayClientMessage(Component.literal(String.format(
-                                        "Guard=%.1f/%.1f FG=%s(%d) SA=%s(%d) PerfectGuard=%s Iframe=%s(%d) CC=%.1f/%.1f Immune=%d Active=%s(%d) Down=%s Air=%s Frozen=%s Locked=%s Casting=%s ManaShield=%.0f%%(%d) ResistBuff=%.0f%%(%d) DamageReductionBuff=%.0f%%(%d)",
+                                        "Guard=%.1f/%.1f FG=%s(%d) SA=%s(%d) PerfectGuard=%s Iframe=%s(%d) CC=%.1f/%.1f Immune=%d Active=%s(%d) Down=%s Air=%s Frozen=%s Locked=%s Casting=%s ManaShield=%.0f%%(%d) ResistBuff=%.0f%%(%d) DamageReductionBuff=%.0f%%(%d) SustainedMP=%d/ticks=%d MoveSpeed=+%.0f%% SpeedBuff=%d ATK/CAST/MOVE=+%.0f/+%.0f/+%.0f%% InstantCast=%d",
                                         state.guard(), state.maximumGuard(), state.frontGuard(), state.frontGuardTicks(),
                                         state.superArmor(), state.superArmorTicks(),
                                         com.zexqm.rpgproject.rpg.combat.ProtectionResolver.perfectGuard(state),
@@ -338,7 +343,12 @@ public final class CommonEvents {
                                         state.actionLocked(), state.casting(), state.manaShieldRatio() * 100.0,
                                         state.manaShieldTicks(), state.resistanceBuff() * 100.0,
                                         state.resistanceBuffTicks(), state.damageReductionBuff() * 100.0,
-                                        state.damageReductionBuffTicks())), false));
+                                        state.damageReductionBuffTicks(), state.flatMpRecovery(),
+                                        state.sustainedResourceTicks(), state.movementSpeedBonus() * 100.0,
+                                        state.speedBuffTicks(), state.attackSpeedBonus() * 100.0,
+                                        state.castingSpeedBonus() * 100.0,
+                                        state.timedMovementSpeedBonus() * 100.0,
+                                        state.castTimeOverrideTicks())), false));
                     });
                     return 1;
                 })));
@@ -540,6 +550,23 @@ public final class CommonEvents {
         if (living.level().isClientSide) return;
         living.getCapability(RpgCombatStateProvider.DATA).ifPresent(state -> {
             boolean transition = state.tick(living) | RpgStatusService.tick(living);
+            if (living instanceof ServerPlayer player) {
+                int requested = state.consumePendingMpRecovery();
+                if (requested > 0) {
+                    Mana mana = player.getCapability(ManaProvider.MANA).orElse(null);
+                    if (mana != null) {
+                        int before = mana.getMana();
+                        int recovered = mana.restore(requested);
+                        if (recovered > 0) {
+                            RpgNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                                    new SyncManaPacket(mana.getMana(), mana.getMaxMana()));
+                            RpgProject.LOGGER.info("[RPG Skill] sustained-resource player={} requested={} recovered={} mana={}->{} remainingTicks={}",
+                                    player.getScoreboardName(), requested, recovered, before, mana.getMana(),
+                                    state.sustainedResourceTicks());
+                        }
+                    }
+                }
+            }
             if (transition || living.tickCount % 20 == 0) {
                 RpgNetwork.CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> living),
                         SyncEntityStatusesPacket.from(living.getId(), state.statuses().values()));
@@ -599,7 +626,8 @@ public final class CommonEvents {
                                 PrimaryResourceType.forClass(data.rpgClass()),
                                 SkillRuntime.activeSkillId(player), data.actionTicks(),
                                 SkillRuntime.activeCastTicks(player),
-                                SkillRuntime.movementCancelAllowed(player)));
+                                SkillRuntime.movementCancelAllowed(player),
+                                SkillRuntime.aimMode(player)));
             }
         });
     }
@@ -614,10 +642,19 @@ public final class CommonEvents {
         DerivedStats stats = data.stats();
         double trainingHealth = (data.healthTraining().level() - 1) * 2.0;
         setBase(player, Attributes.MAX_HEALTH, stats.maxHealth() + trainingHealth);
+        RpgCombatState combatState = player.getCapability(RpgCombatStateProvider.DATA).orElse(null);
+        double sustainedMoveSpeed = combatState == null ? 0.0 : combatState.movementSpeedBonus();
+        double timedMoveSpeed = combatState == null ? 0.0 : combatState.timedMovementSpeedBonus();
+        double attackSpeed = combatState == null ? 0.0 : combatState.attackSpeedBonus();
+        double castingSpeed = combatState == null ? 0.0 : combatState.castingSpeedBonus();
         double weightSpeed = loadRatio <= 0.70 ? 1.0
                 : loadRatio <= 1.0 ? 1.0 - (loadRatio - 0.70) / 0.30 * 0.20
                 : Math.max(0.35, 0.80 - (loadRatio - 1.0) / 0.25 * 0.45);
-        setBase(player, Attributes.MOVEMENT_SPEED, 0.1 * stats.moveSpeed() * weightSpeed);
+        setBase(player, Attributes.MOVEMENT_SPEED,
+                0.1 * stats.moveSpeed() * weightSpeed * (1.0 + sustainedMoveSpeed + timedMoveSpeed));
+        setBase(player, Attributes.ATTACK_SPEED, 4.0 * stats.attackSpeed());
+        setTransientMultiplier(player, Attributes.ATTACK_SPEED, SPEED_SPELL_ATTACK_SPEED_ID,
+                "RPG timed attack speed", attackSpeed);
         setBase(player, ModAttributes.ATTACK_POWER.get(), stats.attackPower());
         setBase(player, ModAttributes.MAGIC_POWER.get(), stats.magicPower());
         setBase(player, ModAttributes.DEFENSE.get(), stats.defense());
@@ -626,7 +663,7 @@ public final class CommonEvents {
         setBase(player, ModAttributes.EVASION.get(), stats.evasion());
         setBase(player, ModAttributes.CRITICAL_CHANCE.get(), stats.criticalChance());
         setBase(player, ModAttributes.CRITICAL_DAMAGE.get(), stats.criticalDamage());
-        setBase(player, ModAttributes.CAST_SPEED.get(), stats.castSpeed());
+        setBase(player, ModAttributes.CAST_SPEED.get(), stats.castSpeed() * (1.0 + castingSpeed));
         setBase(player, ModAttributes.CC_RESISTANCE.get(), stats.ccResistance());
         if (player.getHealth() > player.getMaxHealth()) player.setHealth(player.getMaxHealth());
     }
@@ -636,6 +673,18 @@ public final class CommonEvents {
         if (instance != null && Math.abs(instance.getBaseValue() - value) > 0.001) {
             instance.setBaseValue(value);
         }
+    }
+
+    private static void setTransientMultiplier(ServerPlayer player,
+                                               net.minecraft.world.entity.ai.attributes.Attribute attribute,
+                                               UUID id, String name, double amount) {
+        var instance = player.getAttribute(attribute);
+        if (instance == null) return;
+        var current = instance.getModifier(id);
+        if (current != null && Math.abs(current.getAmount() - amount) <= 0.001) return;
+        if (current != null) instance.removeModifier(id);
+        if (amount > 0) instance.addTransientModifier(new AttributeModifier(
+                id, name, amount, AttributeModifier.Operation.MULTIPLY_TOTAL));
     }
 
     @SubscribeEvent

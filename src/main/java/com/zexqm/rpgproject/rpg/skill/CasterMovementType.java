@@ -4,5 +4,6 @@ package com.zexqm.rpgproject.rpg.skill;
 public enum CasterMovementType {
     NONE,
     SIDE_HOP,
+    OMNI_DODGE,
     TELEPORT
 }

@@ -88,6 +88,17 @@ Run the unified acceptance checklist in `docs/TEST_CHECKLIST.md` before implemen
   60-second expiry, 30-second resistance expiry, cooldown rejection, and bypass damage.
 - [x] Select, source-audit, and implement Protected Area I-V after Magical Shield acceptance.
 - [ ] Run Protected Area Rank V client acceptance and keep multiplayer ally-cap coverage pending.
+- [x] Source-audit and implement Spellbound Heart I-V with server-timed MP recovery and Movement Speed.
+- [ ] Run Spellbound Heart Rank V client acceptance for 250 MP recovery every 10 seconds, +10%
+  Movement Speed, refresh, cooldown, expiry, relog/dimension clear, and zero cast cost.
+- [x] Source-audit and implement Dagger Stab I-V with Main+Sub weapon validation, two melee hits,
+  Critical, Stiffness, Counter Attack, reduced-damage cooldown recast, and regression coverage.
+- [ ] Run Dagger Stab Rank V client acceptance for weapon rejection, two-hit timing, normal effects,
+  cooldown recast suppression, five-target cap, and detached-camera facing.
+- [x] Add the generic taunt-beacon runtime and implement Magic Lighthouse I-III with bounded aggro,
+  Mob profile filtering, compatibility cancellation, replacement, cleanup, and regression coverage.
+- [ ] Run Magic Lighthouse Rank III client acceptance for placement, pulse targeting, Boss exclusion,
+  ten-target cap, expiry, replacement, logout/dimension cleanup, and placeholder rendering.
 
 ## World Core Vanilla Combat Bridge
 
@@ -106,3 +117,20 @@ Detailed plan: `docs/WORLD_CORE_VANILLA_COMBAT_BRIDGE_PLAN.md`.
 - SP costs, prerequisites, ambiguous MCP fields, cooldown-recast multipliers, and missing skill damage.
 - BDO distance or animation frames when only tooltip combat values are sourced.
 - Animation timing as combat authority; GeckoLib remains presentation-only.
+- [x] Source-audit and implement Speed Spell I-III with a generic timed speed-buff state.
+- [ ] Run Speed Spell Rank III client acceptance and deferred multiplayer ally-cap test.
+- [x] Source-audit and implement Sage's Memory with a generic Main-skill cast-time override.
+- [ ] Run Sage's Memory client acceptance with a single-hit and a multi-hit follow-up.
+- [x] Implement Magical Evasion I-V with audited Stamina/SP ranks, omnidirectional collision-clipped
+  movement, and a PvE-only iframe contract.
+- [ ] Client-test Magical Evasion in all four directions, against a wall, at insufficient Stamina,
+  and against both Mob and Player damage sources.
+- [x] Implement Teleport I-III with audited SP/cooldowns, BRPG-scaled Stamina, full Iframe,
+  collision-safe server movement, and directional/cursor input paths.
+- [ ] Client-test Teleport forward/backward, cursor destination, wall clipping, cooldown, Stamina,
+  Iframe, Movement Speed, and detached-camera stability.
+- [x] Add data-driven instant, confirm, and channel aim modes with server-owned targeting sessions.
+- [x] Move Teleport mouse destinations to `Shift+Space -> Ctrl+LMB` confirmation without consuming
+  Stamina or cooldown during target selection.
+- [x] Allow Meteor Shower to accept validated ground-anchor updates for later hit windows during casting.
+- [ ] Client-test targeting timeout/cancel, rapid confirmation, invalid range, and Meteor multi-anchor impacts.

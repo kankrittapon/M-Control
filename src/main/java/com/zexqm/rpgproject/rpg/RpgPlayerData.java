@@ -11,13 +11,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class RpgPlayerData {
-    public static final int COMBAT_TIMEOUT_TICKS = 200;
     private RpgClass rpgClass = RpgClass.WIZARD;
     private Specialization specialization = Specialization.SUCCESSION;
     private WeaponSet activeSet = WeaponSet.MAIN;
     private final ItemStack[] weapons = {ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY};
     private boolean weaponDrawn;
-    private int combatTicks;
     private SkillActionState actionState = SkillActionState.SHEATHED;
     private int actionTicks;
     private final Map<ResourceLocation, Long> cooldowns = new HashMap<>();
@@ -40,7 +38,7 @@ public class RpgPlayerData {
     public Specialization specialization() { return specialization; }
     public WeaponSet activeSet() { return activeSet; }
     public boolean weaponDrawn() { return weaponDrawn; }
-    public boolean inCombat() { return weaponDrawn && combatTicks > 0; }
+    public boolean inCombat() { return weaponDrawn; }
     public SkillActionState actionState() { return actionState; }
     public int actionTicks() { return actionTicks; }
     public ItemStack weapon(WeaponSlot slot) { return weapons[slot.ordinal()]; }
@@ -182,6 +180,11 @@ public class RpgPlayerData {
         weaponDrawn = true;
         touchCombat();
     }
+    public void startTargeting(int ticks) {
+        actionState = SkillActionState.TARGETING;
+        actionTicks = Math.max(1, ticks);
+        weaponDrawn = true;
+    }
     public void startRecovery(int ticks) {
         actionState = SkillActionState.RECOVERY;
         actionTicks = Math.max(0, ticks);
@@ -200,23 +203,21 @@ public class RpgPlayerData {
     }
     public void startCooldown(ResourceLocation skill, long expiration) { cooldowns.put(skill, expiration); }
     public Map<ResourceLocation, Long> cooldowns() { return Map.copyOf(cooldowns); }
-    public void touchCombat() { if (weaponDrawn) combatTicks = COMBAT_TIMEOUT_TICKS; }
+    public void touchCombat() {}
     public boolean tick() {
         if (actionTicks > 0) actionTicks--;
         if (actionTicks == 0 && actionState == SkillActionState.DRAWING) {
             weaponDrawn = true;
             actionState = SkillActionState.READY;
-            combatTicks = COMBAT_TIMEOUT_TICKS;
             return true;
         }
         if (actionTicks == 0 && actionState == SkillActionState.SHEATHING) {
             sheathe();
             return true;
         }
-        if (combatTicks > 0 && --combatTicks == 0) { sheathe(); return true; }
         return false;
     }
-    public void sheathe() { weaponDrawn = false; combatTicks = 0; actionState = SkillActionState.SHEATHED; actionTicks = 0; }
+    public void sheathe() { weaponDrawn = false; actionState = SkillActionState.SHEATHED; actionTicks = 0; }
 
     public CompoundTag save() {
         CompoundTag tag = new CompoundTag();

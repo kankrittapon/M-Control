@@ -5,28 +5,33 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/23.Spellbound Heart.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,
-      "required_level": 20
+      "required_level": 20,
+      "sp_cost": 7
     },
     {
       "rank": 2,
-      "required_level": 29
+      "required_level": 29,
+      "sp_cost": 10
     },
     {
       "rank": 3,
-      "required_level": 38
+      "required_level": 38,
+      "sp_cost": 12
     },
     {
       "rank": 4,
-      "required_level": 47
+      "required_level": 47,
+      "sp_cost": 15
     },
     {
       "rank": 5,
-      "required_level": 55
+      "required_level": 55,
+      "sp_cost": 18
     }
   ],
   "prerequisites": [],

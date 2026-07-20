@@ -147,7 +147,17 @@ Mod compatibility hooks and integration examples are documented in
 - Client requests use replay-protected packets and receive rank, SP, and availability state from the server.
 - The Wizard Main MCP catalog contains all 32 stable IDs, names, descriptions, icon source paths,
   rank counts, and known required levels.
-- Wizard Main currently contains 20 playable entries and 12 safely gated metadata-only entries.
+- Wizard Main currently contains 27 playable entries and 5 safely gated metadata-only entries.
+- Spellbound Heart I-V uses a server-timed sustained-resource buff: MP recovery every 10 seconds,
+  +10% Movement Speed, transient duration, and no cast MP cost.
+- Speed Spell I-III applies a generic 30-second Movement/Attack/Casting Speed buff to the caster and
+  up to 10 nearby allies; BDO rank values are audited while Minecraft radius/timing remain tunable.
+- Sage's Memory provides a 15-second server-authoritative Main-skill cast-time override without
+  collapsing multi-hit spacing or changing cooldown and resource rules.
+- Magical Evasion I-V provides collision-clipped omnidirectional dodges, rank-based Stamina costs,
+  and PvE-only invincibility without moving the detached third-person camera.
+- Teleport I-III provides server-validated directional or cursor-ground movement, full Iframe,
+  rank cooldowns, and the source-backed 10-second Movement Speed buff.
 - Resurrection has a dedicated lifecycle API skeleton but remains gated until player death/downed,
   respawn, disconnect, and multiplayer race behavior are designed.
 - Healing Aura, Healing Lighthouse, Magical Shield, and Protected Area use generic support/defensive contracts rather
@@ -363,6 +373,19 @@ Succession, Awakening, Ninja, final assets, and balance work begin only after th
 - Gem, Apotheosis, enchantment, and enhancement integration.
 
 ## Build And Run
+
+### Mouse Targeting Contract
+
+- `INSTANT_AIM` captures the current cursor/reticle ray when the skill key is pressed.
+- `CONFIRM_TARGETING` enters a server-owned `TARGETING` session; resources and cooldown begin only
+  after a valid `Ctrl+LMB` confirmation.
+- `CHANNEL_TARGETING` permits validated `Ctrl+LMB` anchor updates while the cast is active; completed
+  hit windows keep their original impact and later hits use the newest accepted anchor.
+- Teleport uses confirmation for mouse destinations but keeps immediate W/S directional movement.
+- Meteor Shower uses channel targeting. Invalid or out-of-range updates do not replace its last valid anchor.
+
+Mouse targeting is selected explicitly per skill definition. Cast time alone never implies an extra
+confirmation click.
 
 ```powershell
 .\gradlew.bat test
