@@ -88,6 +88,8 @@ The trial datapack-backed Skill Point tiers are documented in
 - Front Guard protects a configurable 180-degree frontal arc and consumes Guard Gauge.
 - Side and rear damage bypass Front Guard; Iframe cancels damage and Crowd Control.
 - Super Armor blocks Crowd Control while damage still applies; Grab Immunity remains a skill contract.
+- Perfect Guard is derived when Front Guard and Super Armor overlap: front damage is guarded while
+  side/rear damage applies, but Super Armor blocks non-grab CC from every direction.
 - CC types include stiffness, stun, freeze, knockback, knockdown, bound, float, and grab.
 - Non-grab CC uses a configurable 2.0-point budget followed by 100 ticks of immunity.
 - CC applies movement/action locks, floating and knockback velocity, down/air states, and freeze immunity.
@@ -101,6 +103,14 @@ The trial datapack-backed Skill Point tiers are documented in
 - Back, Down, Air, Speed, and Counter Attack states use data-driven multipliers.
 - Vanilla and environmental damage do not receive RPG stat scaling; eligible direct attacks can
   still be stopped by Iframe or Front Guard.
+
+The planned Vanilla damage, explosion, knockback, and enchantment bridge is documented in
+[`docs/WORLD_CORE_VANILLA_COMBAT_BRIDGE_PLAN.md`](docs/WORLD_CORE_VANILLA_COMBAT_BRIDGE_PLAN.md).
+Vanilla attacks and their offensive enchantments remain unchanged outside RPG Combat Mode. While
+weapons are drawn, the server replaces Vanilla entity attacks with RPG skill/basic-attack requests,
+preventing damage, fire, sweeping, and knockback enchantments from applying twice.
+Mod compatibility hooks and integration examples are documented in
+[`docs/WORLD_CORE_COMPATIBILITY_API.md`](docs/WORLD_CORE_COMPATIBILITY_API.md).
 
 ### Mob Level And World Scaling
 
@@ -137,10 +147,10 @@ The trial datapack-backed Skill Point tiers are documented in
 - Client requests use replay-protected packets and receive rank, SP, and availability state from the server.
 - The Wizard Main MCP catalog contains all 32 stable IDs, names, descriptions, icon source paths,
   rank counts, and known required levels.
-- Wizard Main currently contains 19 playable entries and 13 safely gated metadata-only entries.
+- Wizard Main currently contains 20 playable entries and 12 safely gated metadata-only entries.
 - Resurrection has a dedicated lifecycle API skeleton but remains gated until player death/downed,
   respawn, disconnect, and multiplayer race behavior are designed.
-- Healing Aura, Healing Lighthouse, and Magical Shield use generic support/defensive contracts rather
+- Healing Aura, Healing Lighthouse, Magical Shield, and Protected Area use generic support/defensive contracts rather
   than hard-coded skill IDs.
 - Crosshair rays use the entity bounding box exactly. Projectile and line width comes only from the
   skill definition rather than a hidden targeting allowance.
@@ -231,6 +241,13 @@ Example Wizard test setup:
 ## Development Roadmap
 
 World Core, the generic Skill Runtime, and skill catalog/progression Phases 1-4 are checkpointed.
+
+World Core Vanilla combat integration, Perfect Guard rules, mod compatibility hooks, and deterministic
+impact test commands are documented in `docs/WORLD_CORE_VANILLA_COMBAT_BRIDGE_PLAN.md` and
+`docs/WORLD_CORE_VANILLA_COMBAT_ACCEPTANCE.md`.
+
+The bridge is complete through Phase F. Live acceptance confirms frontal melee guard behavior and
+rear projectile/explosion damage bypass while Super Armor continues to suppress knockback.
 The next work proceeds in this order so combat rules remain server-authoritative before UI and
 presentation are added.
 

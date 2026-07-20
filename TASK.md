@@ -84,9 +84,22 @@ Run the unified acceptance checklist in `docs/TEST_CHECKLIST.md` before implemen
   gate without intercepting player death or reusing combat CC downed state.
 - [x] Audit and implement Magical Shield I-IV with generic timed mana absorption, CC Resistance,
   partial protection when MP is insufficient, structured logs, `/rpg status`, and regression coverage.
-- [ ] Run Magical Shield Rank IV client acceptance for 25% MP absorption, zero/insufficient MP,
+- [x] Run Magical Shield Rank IV client acceptance for 25% MP absorption, zero/insufficient MP,
   60-second expiry, 30-second resistance expiry, cooldown rejection, and bypass damage.
-- [ ] Select and source-audit the next Wizard Main production skill after Magical Shield acceptance.
+- [x] Select, source-audit, and implement Protected Area I-V after Magical Shield acceptance.
+- [ ] Run Protected Area Rank V client acceptance and keep multiplayer ally-cap coverage pending.
+
+## World Core Vanilla Combat Bridge
+
+- [x] Interim: SA/Iframe cancel Vanilla knockback and Protected Area SA covers its full cast window.
+- [x] Phase A: add per-hit `CombatImpactContext` and source classification.
+- [x] Phase B: route RPG and Vanilla protection decisions through one resolver.
+- [x] Phase C: add directional FG handling for Vanilla knockback and explosions.
+- [x] Phase D: add explicit Vanilla enchantment policy for RPG combat and RPG weapons.
+- [x] Phase E: expose mod compatibility hooks with a safe Vanilla fallback.
+- [x] Phase F: add Perfect Guard derived status, debug commands, logs, and acceptance matrix.
+
+Detailed plan: `docs/WORLD_CORE_VANILLA_COMBAT_BRIDGE_PLAN.md`.
 
 ## Do Not Guess
 

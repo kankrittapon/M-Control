@@ -5,28 +5,33 @@
   "class": "wizard",
   "tree": "main",
   "icon": "textures/gui/skills/wizard/main/22.Protected Area.png",
-  "playable": false,
-  "unavailable_reason": "Missing SP costs, prerequisites, and combat definition",
+  "playable": true,
+  "unavailable_reason": "",
   "ranks": [
     {
       "rank": 1,
-      "required_level": 25
+      "required_level": 25,
+      "sp_cost": 5
     },
     {
       "rank": 2,
-      "required_level": 31
+      "required_level": 31,
+      "sp_cost": 9
     },
     {
       "rank": 3,
-      "required_level": 38
+      "required_level": 38,
+      "sp_cost": 13
     },
     {
       "rank": 4,
-      "required_level": 46
+      "required_level": 46,
+      "sp_cost": 18
     },
     {
       "rank": 5,
-      "required_level": 54
+      "required_level": 54,
+      "sp_cost": 23
     }
   ],
   "prerequisites": [],

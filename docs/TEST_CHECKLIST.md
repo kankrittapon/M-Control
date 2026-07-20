@@ -1,6 +1,6 @@
 # BRPG Test Checklist
 
-อัปเดต: 2026-07-18
+อัปเดต: 2026-07-20
 
 สถานะ:
 
@@ -11,17 +11,31 @@
 
 ## 1. Automated Baseline
 
-- [x] `gradlew test build` ผ่านล่าสุด 2026-07-19 (`55` unit tests)
-- [x] `gradlew runGameTestServer` ผ่านล่าสุด 2026-07-19 (`12/12` required GameTests)
-- [A] Catalog มี `32` รายการ (`19 playable`, `13 metadata-only`) หลังเพิ่ม Magical Shield
+- [x] `gradlew test build` ผ่านล่าสุด 2026-07-20 (`79` unit tests)
+- [x] `gradlew runGameTestServer` ผ่านล่าสุด 2026-07-20 (`18/18` required GameTests)
+- [x] Vanilla Combat Bridge Phase F deterministic probes ผ่าน front/side/rear สำหรับ Perfect Guard
+- [x] Live Zoglin/Zombie front melee, Skeleton rear projectile และ Creeper rear explosion ตรงตามกฎ
+- [A] Catalog มี `32` รายการ (`20 playable`, `12 metadata-only`) หลังเพิ่ม Protected Area
 - [A] Resurrection ยังคง `metadata-only`; lifecycle skeleton ต้องไม่ attach capability หรือดัก death event
 - [A] Magical Shield I-IV มี SP `3/5/8/12`, mana shield 60s และ resistance 30s
-- [ ] Client: Magical Shield rank IV หัก MP 25% ของ damage แล้วปล่อยส่วนที่เหลือเข้า HP
+- [x] Client: Magical Shield rank IV หัก MP 25% ของ damage แล้วปล่อยส่วนที่เหลือเข้า HP
 - [ ] Client: Magical Shield เมื่อ MP ไม่พอและเมื่อ buff หมดเวลา
-- [A] Server startup 2026-07-19 โหลด Skill Definitions `28` definitions / `15` stable IDs; Lightning ranks I-V ไม่ถูก reject
+- [A] Protected Area I-V ใช้ generic timed DR 50%, ระยะเวลา 4-8 วินาที และ self + ally AoE
+- [ ] Client: Protected Area rank V ลด final damage ครึ่งหนึ่งและหมดหลัง 8 วินาที
+- [ ] Multiplayer: Protected Area ใช้กับ ally ในระยะ 15 blocks สูงสุด 10 คน
+- [A] Server startup 2026-07-20 โหลด Skill Definitions `90` definitions / `29` stable IDs
 - [A] Damage formula, AoE resolver, links, resources, catalog validation, SP tiers และ production JSON
 - [A] Phase 5 SP budget: Fireball `100`, Explosion `225`, Concentrated `125`, Multiple Arrows `50`, Mana Absorption `125`, Lightning `150`, Lightning Chain `205`, Meteor Shower `500`, รวม `1480`
 - [A] FG, SA, Iframe, CC budget, Smash, Status และ Mob profile foundation
+- [A] Perfect Guard ด้านหน้ากัน damage; ด้านหลังรับ damage แต่ SA กัน CC
+- [A] SA/Iframe ยกเลิก Vanilla knockback ผ่าน Forge event
+- [ ] Client: อาวุธ Knockback โจมตีระหว่าง SA แล้วไม่ผลัก แต่ damage ยังเข้า
+- [ ] Client: TNT/Creeper ด้านหน้า FG กัน damage/impulse; ด้านหลัง FG ไม่กัน
+- [ ] Client: FG+SA พร้อมกันแสดง `PerfectGuard=true` ใน `/rpg status`
+- [A] Offensive enchant policy ปิด Sharpness/Smite/Bane/Fire Aspect/Knockback/Sweeping ใน RPG Combat
+- [ ] Client: Vanilla sword enchant ทำงานเมื่อ sheathed และไม่สร้าง Vanilla hit เมื่อ drawn
+- [A] Unknown mod impact fallback เป็น Vanilla และ compatibility event override category/origin ได้
+- [A] Mod enchant ID override เป็น `RPG_BRIDGED` ได้โดยไม่เปิด RPG damage formula อัตโนมัติ
 
 ก่อนเริ่ม Manual test รอบใหม่ ให้รัน:
 
@@ -56,7 +70,7 @@
 - [x] Fireball ranks I-IV ใช้ SP `10 + 20 + 30 + 40 = 100`
 - [x] Fireball Explosion ranks I-III ใช้ SP `50 + 75 + 100 = 225`
 - [x] Concentrated Magic Arrow ranks I-III ใช้ SP `25 + 40 + 60 = 125`
-- [A] 19 playable skillsปัจจุบันใช้รวม `3189 SP`
+- [A] 20 playable skillsปัจจุบันใช้รวม `3257 SP`
 - [x] SP ไม่ติดลบเมื่อแต้มไม่พอ และ rejected upgrade ไม่หัก SP
 - [x] Downgrade คืนค่า SP ของ rank นั้น
 - [x] `/rpg skills reset` คืน learned ranks/spent SP ถูกต้อง

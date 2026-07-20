@@ -52,11 +52,11 @@ public final class CombatConfig extends SimpleJsonResourceReloadListener {
                          double smashHorizontalVelocity, double airSmashVerticalVelocity,
                          double backAttackMultiplier, double downAttackMultiplier,
                          double airAttackMultiplier, double speedAttackMultiplier,
-                         double counterAttackMultiplier) {
+                         double counterAttackMultiplier, boolean logImpactDecisions) {
         public static Values defaults() {
             return new Values(0.10, 0.10, 0.95, 0.80, 180.0, 120.0, 1.0, 0.5,
                     2.0, 100, 100, 0.7, 1.0, 20, 40, 40, 20, 40, 10, 40,
-                    0.8, 0.6, 20, 12, 0.8, -0.15, 1.2, 1.2, 1.7, 1.2, 1.7);
+                    0.8, 0.6, 20, 12, 0.8, -0.15, 1.2, 1.2, 1.7, 1.2, 1.7, true);
         }
 
         static Values parse(JsonObject root) {
@@ -67,6 +67,7 @@ public final class CombatConfig extends SimpleJsonResourceReloadListener {
             JsonObject durations = object(cc, "durations");
             JsonObject special = object(root, "special_damage");
             JsonObject smash = object(root, "smash");
+            JsonObject observability = object(root, "observability");
             Values parsed = new Values(
                     number(damage, "power_scale", defaults.powerScale),
                     number(damage, "minimum_hit_chance", defaults.minimumHitChance),
@@ -98,7 +99,8 @@ public final class CombatConfig extends SimpleJsonResourceReloadListener {
                     number(special, "down_attack", defaults.downAttackMultiplier),
                     number(special, "air_attack", defaults.airAttackMultiplier),
                     number(special, "speed_attack", defaults.speedAttackMultiplier),
-                    number(special, "counter_attack", defaults.counterAttackMultiplier));
+                    number(special, "counter_attack", defaults.counterAttackMultiplier),
+                    bool(observability, "log_impact_decisions", defaults.logImpactDecisions));
             parsed.validate();
             return parsed;
         }
@@ -130,6 +132,10 @@ public final class CombatConfig extends SimpleJsonResourceReloadListener {
 
         private static int integer(JsonObject object, String key, int fallback) {
             return object.has(key) ? GsonHelper.getAsInt(object, key) : fallback;
+        }
+
+        private static boolean bool(JsonObject object, String key, boolean fallback) {
+            return object.has(key) ? GsonHelper.getAsBoolean(object, key) : fallback;
         }
     }
 }

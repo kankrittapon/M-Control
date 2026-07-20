@@ -45,14 +45,18 @@ public final class RpgCombatService {
         Set<SpecialAttackType> specials = resolveSpecials(context, state);
         damage = RpgCombatMath.stackSpecialMultipliers(damage, specials, config);
 
-        if (state.frontGuard() && RpgCombatMath.withinFacingArc(target, context.origin(),
-                config.frontalGuardArcDegrees()) && state.absorbGuard(damage)) {
+        CombatImpactContext impact = CombatImpactContext.resolve(target, RpgDamageTypes.source(attacker),
+                (float) damage, CombatImpactCategory.RPG, context.origin(), true,
+                attacker, attacker, false);
+        ProtectionDecision protection = ProtectionResolver.resolveDamage(state, impact);
+        if (protection.blockDamage() && (!protection.consumeGuard() || state.absorbGuard(damage))) {
             return new RpgDamageResult(RpgDamageResult.Outcome.GUARDED, 0.0, critical, specials,
                     new CrowdControlApplicationResult(CrowdControlApplicationResult.Status.FRONT_GUARD,
                             context.crowdControl(), 0.0, 0));
         }
 
         damage = RpgCombatMath.reducedDamage(damage, targetStats.damageReduction(), config);
+        damage = TimedDamageReductionService.reduce(target, (float) Math.max(0.0, damage));
         float applied = ManaShieldService.absorb(target, (float) Math.max(0.0, damage)).remainingDamage();
         APPLYING_TAGGED_DAMAGE.set(true);
         boolean hurt;

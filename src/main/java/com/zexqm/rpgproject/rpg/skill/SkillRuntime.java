@@ -365,11 +365,14 @@ public final class SkillRuntime {
                 target.getCapability(RpgCombatStateProvider.DATA).ifPresent(state -> {
                     state.activateManaShield(hit.defensive().manaShieldTicks(), hit.defensive().manaShieldRatio());
                     state.activateResistanceBuff(hit.defensive().resistanceTicks(), hit.defensive().resistanceBonus());
+                    state.activateDamageReductionBuff(hit.defensive().damageReductionTicks(),
+                            hit.defensive().damageReductionRatio());
                 });
-                RpgProject.LOGGER.info("[RPG Skill] defensive skill={} target={}#{} manaShield={} shieldTicks={} resistance={} resistanceTicks={}",
+                RpgProject.LOGGER.info("[RPG Skill] defensive skill={} target={}#{} manaShield={} shieldTicks={} resistance={} resistanceTicks={} damageReduction={} damageReductionTicks={}",
                         skill.id(), target.getType().toShortString(), target.getId(),
                         hit.defensive().manaShieldRatio(), hit.defensive().manaShieldTicks(),
-                        hit.defensive().resistanceBonus(), hit.defensive().resistanceTicks());
+                        hit.defensive().resistanceBonus(), hit.defensive().resistanceTicks(),
+                        hit.defensive().damageReductionRatio(), hit.defensive().damageReductionTicks());
             }
             if (hit.health().active()) {
                 boolean casterTarget = target == context.caster();

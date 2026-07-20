@@ -42,6 +42,9 @@ import com.zexqm.rpgproject.registry.ModAttributes;
 import com.zexqm.rpgproject.rpg.ClassProfileManager;
 import com.zexqm.rpgproject.rpg.WeightCalculator;
 import com.zexqm.rpgproject.rpg.combat.CombatConfig;
+import com.zexqm.rpgproject.rpg.combat.CombatImpactCategory;
+import com.zexqm.rpgproject.rpg.combat.CombatImpactContext;
+import com.zexqm.rpgproject.rpg.combat.CombatImpactDiagnostics;
 import com.zexqm.rpgproject.rpg.combat.CrowdControlResolver;
 import com.zexqm.rpgproject.rpg.combat.RpgCombatService;
 import com.zexqm.rpgproject.rpg.combat.RpgCombatState;
@@ -187,6 +190,15 @@ public final class CommonEvents {
                                     return 1;
                                 }))))
                 .then(Commands.literal("debug").requires(source -> source.hasPermission(2))
+                        .then(Commands.literal("perfect-guard")
+                                .then(Commands.argument("ticks", IntegerArgumentType.integer(1, 1200))
+                                        .executes(ctx -> debugPerfectGuard(ctx,
+                                                IntegerArgumentType.getInteger(ctx, "ticks")))))
+                        .then(Commands.literal("impact")
+                                .then(Commands.argument("category", StringArgumentType.word())
+                                        .then(Commands.argument("direction", StringArgumentType.word())
+                                                .then(Commands.argument("damage", IntegerArgumentType.integer(1, 100000))
+                                                        .executes(CommonEvents::debugImpact)))))
                         .then(Commands.literal("perf-spawn")
                                 .then(Commands.argument("count", IntegerArgumentType.integer(10, 50))
                                         .executes(ctx -> spawnPerformanceTargets(ctx,
@@ -316,14 +328,17 @@ public final class CommonEvents {
                                 data.healthTraining().level(), WeightCalculator.carried(player), WeightCalculator.capacity(data))), false);
                         player.getCapability(RpgCombatStateProvider.DATA).ifPresent(state ->
                                 player.displayClientMessage(Component.literal(String.format(
-                                        "Guard=%.1f/%.1f FG=%s(%d) SA=%s(%d) Iframe=%s(%d) CC=%.1f/%.1f Immune=%d Active=%s(%d) Down=%s Air=%s Frozen=%s Locked=%s Casting=%s ManaShield=%.0f%%(%d) ResistBuff=%.0f%%(%d)",
+                                        "Guard=%.1f/%.1f FG=%s(%d) SA=%s(%d) PerfectGuard=%s Iframe=%s(%d) CC=%.1f/%.1f Immune=%d Active=%s(%d) Down=%s Air=%s Frozen=%s Locked=%s Casting=%s ManaShield=%.0f%%(%d) ResistBuff=%.0f%%(%d) DamageReductionBuff=%.0f%%(%d)",
                                         state.guard(), state.maximumGuard(), state.frontGuard(), state.frontGuardTicks(),
-                                        state.superArmor(), state.superArmorTicks(), state.iframe(), state.iframeTicks(),
+                                        state.superArmor(), state.superArmorTicks(),
+                                        com.zexqm.rpgproject.rpg.combat.ProtectionResolver.perfectGuard(state),
+                                        state.iframe(), state.iframeTicks(),
                                         state.ccPoints(), CombatConfig.values().maximumCcPoints(), state.ccImmunityTicks(),
                                         state.activeCc(), state.activeCcTicks(), state.downed(), state.floated(), state.frozen(),
                                         state.actionLocked(), state.casting(), state.manaShieldRatio() * 100.0,
                                         state.manaShieldTicks(), state.resistanceBuff() * 100.0,
-                                        state.resistanceBuffTicks())), false));
+                                        state.resistanceBuffTicks(), state.damageReductionBuff() * 100.0,
+                                        state.damageReductionBuffTicks())), false));
                     });
                     return 1;
                 })));
@@ -724,6 +739,68 @@ public final class CommonEvents {
         context.getSource().sendSuccess(() -> Component.literal(
                 "Ground cast distance=" + distance + " result=" + result), false);
         return result == com.zexqm.rpgproject.rpg.skill.SkillCastResult.STARTED ? 1 : 0;
+    }
+
+    private static int debugPerfectGuard(CommandContext<CommandSourceStack> context, int ticks)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        RpgCombatState state = player.getCapability(RpgCombatStateProvider.DATA).orElse(null);
+        if (state == null) return 0;
+        state.activateFrontGuard(ticks);
+        state.activateSuperArmor(ticks);
+        syncCombat(player, state);
+        context.getSource().sendSuccess(() -> Component.literal(
+                "Perfect Guard active for " + ticks + " ticks (FG + SA)"), false);
+        return 1;
+    }
+
+    private static int debugImpact(CommandContext<CommandSourceStack> context)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        RpgCombatState state = player.getCapability(RpgCombatStateProvider.DATA).orElse(null);
+        if (state == null) return 0;
+
+        String categoryValue = StringArgumentType.getString(context, "category").toLowerCase();
+        CombatImpactCategory category = switch (categoryValue) {
+            case "melee", "direct" -> CombatImpactCategory.DIRECT;
+            case "projectile" -> CombatImpactCategory.PROJECTILE;
+            case "explosion" -> CombatImpactCategory.EXPLOSION;
+            default -> null;
+        };
+        if (category == null) {
+            context.getSource().sendFailure(Component.literal("Category: melee, projectile, or explosion"));
+            return 0;
+        }
+
+        Vec3 forward = player.getLookAngle().multiply(1, 0, 1).normalize();
+        if (forward.lengthSqr() <= 1.0E-8) forward = new Vec3(0, 0, 1);
+        Vec3 right = new Vec3(-forward.z, 0, forward.x);
+        String direction = StringArgumentType.getString(context, "direction").toLowerCase();
+        Vec3 offset = switch (direction) {
+            case "front" -> forward;
+            // Use 120 degrees so the probe is clearly outside the inclusive 180-degree FG boundary.
+            case "side" -> right.scale(Math.sqrt(3.0) / 2.0).subtract(forward.scale(0.5));
+            case "rear", "back" -> forward.scale(-1);
+            default -> null;
+        };
+        if (offset == null) {
+            context.getSource().sendFailure(Component.literal("Direction: front, side, or rear"));
+            return 0;
+        }
+
+        float damage = IntegerArgumentType.getInteger(context, "damage");
+        Vec3 origin = player.position().add(offset.scale(2.0));
+        CombatImpactContext impact = CombatImpactContext.resolve(player, null, damage, category,
+                origin, false, null, null, false);
+        CombatImpactDiagnostics.Snapshot result = CombatImpactDiagnostics.probe(state, impact);
+        CombatImpactDiagnostics.log("command-probe", player.getScoreboardName(), result);
+        syncCombat(player, state);
+        context.getSource().sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                "%s %s angle=%.1f protection=%s damage=%.1f->%.1f guard=%.1f->%.1f knockbackBlocked=%s",
+                category, direction, result.facingAngleDegrees(), result.damageDecision().reason(),
+                result.damageBefore(), result.damageAfter(), result.guardBefore(), result.guardAfter(),
+                result.knockbackDecision().blockKnockback())), false);
+        return 1;
     }
 
     public static void syncCombatState(ServerPlayer player) {

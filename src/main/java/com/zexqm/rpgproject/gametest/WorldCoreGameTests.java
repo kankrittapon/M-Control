@@ -1,6 +1,8 @@
 package com.zexqm.rpgproject.gametest;
 
 import com.zexqm.rpgproject.RpgProject;
+import com.zexqm.rpgproject.api.combat.CombatImpactResolveEvent;
+import com.zexqm.rpgproject.api.combat.EnchantmentCombatPolicyEvent;
 import com.zexqm.rpgproject.rpg.CrowdControlType;
 import com.zexqm.rpgproject.rpg.combat.CrowdControlApplicationResult;
 import com.zexqm.rpgproject.rpg.combat.CrowdControlResolver;
@@ -13,6 +15,13 @@ import com.zexqm.rpgproject.rpg.combat.RpgPowerType;
 import com.zexqm.rpgproject.rpg.combat.SmashApplicationResult;
 import com.zexqm.rpgproject.rpg.combat.SmashResolver;
 import com.zexqm.rpgproject.rpg.combat.SmashType;
+import com.zexqm.rpgproject.rpg.combat.CombatImpactCategory;
+import com.zexqm.rpgproject.rpg.combat.CombatImpactContext;
+import com.zexqm.rpgproject.rpg.combat.CombatImpactDiagnostics;
+import com.zexqm.rpgproject.rpg.combat.ProtectionDecision;
+import com.zexqm.rpgproject.rpg.combat.ProtectionResolver;
+import com.zexqm.rpgproject.rpg.combat.enchant.EnchantmentCombatPolicy;
+import com.zexqm.rpgproject.rpg.combat.enchant.RpgEnchantmentPolicyRegistry;
 import com.zexqm.rpgproject.rpg.mob.MobControlProfile;
 import com.zexqm.rpgproject.rpg.mob.MobControlProfileEvent;
 import com.zexqm.rpgproject.rpg.mob.MobControlProfiles;
@@ -25,7 +34,10 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.Zombie;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.living.LivingKnockBackEvent;
 import net.minecraftforge.gametest.GameTestHolder;
 
 import java.util.Collections;
@@ -51,6 +63,39 @@ public final class WorldCoreGameTests {
                 zombie.position().add(0, 0, 2));
         helper.assertTrue(result.status() == CrowdControlApplicationResult.Status.SUPER_ARMOR,
                 "Super Armor did not block stun");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void superArmorBlocksVanillaKnockback(GameTestHelper helper) {
+        Zombie target = helper.spawn(EntityType.ZOMBIE, new BlockPos(1, 2, 1));
+        target.getCapability(RpgCombatStateProvider.DATA)
+                .orElseThrow(() -> new IllegalStateException("Missing combat state"))
+                .activateSuperArmor(20);
+        LivingKnockBackEvent event = new LivingKnockBackEvent(target, 0.4F, 0, 1);
+        MinecraftForge.EVENT_BUS.post(event);
+        helper.assertTrue(event.isCanceled(), "Super Armor did not block Vanilla knockback");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void perfectGuardUsesFrontGuardAndRearSuperArmor(GameTestHelper helper) {
+        Zombie frontAttacker = helper.spawn(EntityType.ZOMBIE, new BlockPos(1, 2, 2));
+        Zombie rearAttacker = helper.spawn(EntityType.ZOMBIE, new BlockPos(1, 2, 0));
+        Zombie target = helper.spawn(EntityType.ZOMBIE, new BlockPos(1, 2, 1));
+        target.setYRot(0.0F);
+        var state = target.getCapability(RpgCombatStateProvider.DATA)
+                .orElseThrow(() -> new IllegalStateException("Missing combat state"));
+        state.activateFrontGuard(20);
+        state.activateSuperArmor(20);
+
+        RpgDamageResult front = RpgCombatService.apply(context(frontAttacker, target, 5, CrowdControlType.STUN));
+        RpgDamageResult rear = RpgCombatService.apply(context(rearAttacker, target, 5, CrowdControlType.STUN));
+        helper.assertTrue(front.outcome() == RpgDamageResult.Outcome.GUARDED,
+                "Perfect Guard did not guard frontal damage");
+        helper.assertTrue(rear.outcome() == RpgDamageResult.Outcome.HIT
+                        && rear.crowdControl().status() == CrowdControlApplicationResult.Status.SUPER_ARMOR,
+                "Perfect Guard did not allow rear damage while Super Armor blocked rear CC");
         helper.succeed();
     }
 
@@ -223,6 +268,66 @@ public final class WorldCoreGameTests {
         } finally {
             MinecraftForge.EVENT_BUS.unregister(override);
         }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void compatibilityCanOverrideUnknownImpactAndEnchantment(GameTestHelper helper) {
+        Zombie target = helper.spawn(EntityType.ZOMBIE, new BlockPos(2, 2, 2));
+        target.setYRot(0.0F);
+        var state = target.getCapability(RpgCombatStateProvider.DATA)
+                .orElseThrow(() -> new IllegalStateException("Missing combat state"));
+        state.activateFrontGuard(20);
+        ResourceLocation enchantmentId = new ResourceLocation("compat_test", "impact_power");
+        Consumer<CombatImpactResolveEvent> impactOverride = event -> {
+            if (event.target() == target && event.source() == null) {
+                event.setCategory(CombatImpactCategory.EXPLOSION);
+                event.setOrigin(target.position().add(0, 0, 2));
+            }
+        };
+        Consumer<EnchantmentCombatPolicyEvent> enchantmentOverride = event -> {
+            if (event.enchantmentId().equals(enchantmentId))
+                event.setPolicy(EnchantmentCombatPolicy.RPG_BRIDGED);
+        };
+        MinecraftForge.EVENT_BUS.addListener(impactOverride);
+        MinecraftForge.EVENT_BUS.addListener(enchantmentOverride);
+        try {
+            CombatImpactContext impact = CombatImpactContext.fromKnockback(target, 0, 0, 0.4F);
+            helper.assertTrue(impact.category() == CombatImpactCategory.EXPLOSION
+                            && ProtectionResolver.resolveKnockback(state, impact).blockKnockback()
+                            && RpgEnchantmentPolicyRegistry.policy(enchantmentId)
+                            == EnchantmentCombatPolicy.RPG_BRIDGED,
+                    "Compatibility API did not override impact origin/category or enchantment policy");
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(impactOverride);
+            MinecraftForge.EVENT_BUS.unregister(enchantmentOverride);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void impactDiagnosticsExposePerfectGuardDirectionsAndGuardCost(GameTestHelper helper) {
+        Zombie target = helper.spawn(EntityType.ZOMBIE, new BlockPos(2, 2, 2));
+        target.setYRot(0.0F);
+        var state = target.getCapability(RpgCombatStateProvider.DATA)
+                .orElseThrow(() -> new IllegalStateException("Missing combat state"));
+        state.activateFrontGuard(20);
+        state.activateSuperArmor(20);
+        Vec3 front = target.position().add(0, 0, 2);
+        Vec3 rear = target.position().add(0, 0, -2);
+        var frontResult = CombatImpactDiagnostics.probe(state, CombatImpactContext.resolve(target,
+                null, 10.0F, CombatImpactCategory.DIRECT, front, false, null, null, false));
+        var rearResult = CombatImpactDiagnostics.inspect(state, CombatImpactContext.resolve(target,
+                null, 10.0F, CombatImpactCategory.EXPLOSION, rear, false, null, null, false));
+        helper.assertTrue(frontResult.perfectGuard()
+                        && frontResult.damageDecision().reason() == ProtectionDecision.Reason.PERFECT_GUARD
+                        && frontResult.damageAfter() == 0.0F
+                        && frontResult.guardBefore() - frontResult.guardAfter() == 10.0
+                        && frontResult.knockbackDecision().blockKnockback()
+                        && rearResult.damageDecision().reason() == ProtectionDecision.Reason.SUPER_ARMOR
+                        && rearResult.damageAfter() == 10.0F
+                        && rearResult.knockbackDecision().blockKnockback(),
+                "Impact diagnostics did not expose Perfect Guard front/rear behavior");
         helper.succeed();
     }
 

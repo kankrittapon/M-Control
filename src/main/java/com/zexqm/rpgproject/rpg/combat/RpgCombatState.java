@@ -28,6 +28,8 @@ public final class RpgCombatState {
     private double manaShieldRatio;
     private int resistanceBuffTicks;
     private double resistanceBuff;
+    private int damageReductionBuffTicks;
+    private double damageReductionBuff;
     private final Map<RpgStatusType, RpgStatusInstance> statuses = new EnumMap<>(RpgStatusType.class);
 
     public boolean frontGuard() { return frontGuardTicks > 0 && guard > 0; }
@@ -49,6 +51,8 @@ public final class RpgCombatState {
     public double manaShieldRatio() { return manaShieldTicks > 0 ? manaShieldRatio : 0.0; }
     public int resistanceBuffTicks() { return resistanceBuffTicks; }
     public double resistanceBuff() { return resistanceBuffTicks > 0 ? resistanceBuff : 0.0; }
+    public int damageReductionBuffTicks() { return damageReductionBuffTicks; }
+    public double damageReductionBuff() { return damageReductionBuffTicks > 0 ? damageReductionBuff : 0.0; }
     public boolean downed() { return activeCc == CrowdControlType.KNOCKDOWN || activeCc == CrowdControlType.BOUND; }
     public boolean floated() { return activeCc == CrowdControlType.FLOAT; }
     public boolean frozen() { return activeCc == CrowdControlType.FREEZE && activeCcTicks > 0; }
@@ -73,6 +77,15 @@ public final class RpgCombatState {
         if (ticks <= 0 || value <= 0) return;
         resistanceBuffTicks = Math.max(resistanceBuffTicks, ticks);
         resistanceBuff = Math.max(resistanceBuff, Math.min(1.0, value));
+    }
+    public void activateDamageReductionBuff(int ticks, double value) {
+        if (ticks <= 0 || value <= 0) return;
+        if (value > damageReductionBuff) {
+            damageReductionBuff = Math.min(1.0, value);
+            damageReductionBuffTicks = ticks;
+        } else if (value == damageReductionBuff) {
+            damageReductionBuffTicks = Math.max(damageReductionBuffTicks, ticks);
+        }
     }
 
     public boolean absorbGuard(double damage) {
@@ -125,6 +138,10 @@ public final class RpgCombatState {
             resistanceBuff = 0.0;
             transition = true;
         }
+        if (damageReductionBuffTicks > 0 && --damageReductionBuffTicks == 0) {
+            damageReductionBuff = 0.0;
+            transition = true;
+        }
         if (ccImmunityTicks > 0 && --ccImmunityTicks == 0) {
             ccPoints = 0.0;
             transition = true;
@@ -165,8 +182,8 @@ public final class RpgCombatState {
         activeCc = null;
         casting = false;
         airSmashLandingTicks = 0;
-        manaShieldTicks = resistanceBuffTicks = 0;
-        manaShieldRatio = resistanceBuff = 0.0;
+        manaShieldTicks = resistanceBuffTicks = damageReductionBuffTicks = 0;
+        manaShieldRatio = resistanceBuff = damageReductionBuff = 0.0;
         statuses.clear();
     }
 

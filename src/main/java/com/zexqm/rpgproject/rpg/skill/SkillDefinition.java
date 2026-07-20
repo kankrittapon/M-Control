@@ -168,21 +168,25 @@ public record SkillDefinition(ResourceLocation id, boolean debugOnly, boolean in
     }
 
     public record DefensivePayload(int manaShieldTicks, double manaShieldRatio,
-                                   int resistanceTicks, double resistanceBonus) {
-        public static final DefensivePayload NONE = new DefensivePayload(0, 0, 0, 0);
+                                   int resistanceTicks, double resistanceBonus,
+                                   int damageReductionTicks, double damageReductionRatio) {
+        public static final DefensivePayload NONE = new DefensivePayload(0, 0, 0, 0, 0, 0);
 
         public DefensivePayload {
-            if (manaShieldTicks < 0 || resistanceTicks < 0
+            if (manaShieldTicks < 0 || resistanceTicks < 0 || damageReductionTicks < 0
                     || !Double.isFinite(manaShieldRatio) || manaShieldRatio < 0 || manaShieldRatio > 1
-                    || !Double.isFinite(resistanceBonus) || resistanceBonus < 0 || resistanceBonus > 1)
+                    || !Double.isFinite(resistanceBonus) || resistanceBonus < 0 || resistanceBonus > 1
+                    || !Double.isFinite(damageReductionRatio)
+                    || damageReductionRatio < 0 || damageReductionRatio > 1)
                 throw new IllegalArgumentException("Invalid defensive payload");
             if ((manaShieldRatio > 0) != (manaShieldTicks > 0)
-                    || (resistanceBonus > 0) != (resistanceTicks > 0))
+                    || (resistanceBonus > 0) != (resistanceTicks > 0)
+                    || (damageReductionRatio > 0) != (damageReductionTicks > 0))
                 throw new IllegalArgumentException("Defensive effect requires value and duration");
         }
 
         public boolean active() {
-            return manaShieldTicks > 0 || resistanceTicks > 0;
+            return manaShieldTicks > 0 || resistanceTicks > 0 || damageReductionTicks > 0;
         }
     }
 

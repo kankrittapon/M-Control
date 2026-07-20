@@ -181,7 +181,9 @@ public final class SkillRegistry extends SimpleJsonResourceReloadListener {
                 GsonHelper.getAsInt(defensive, "mana_shield_ticks", 0),
                 GsonHelper.getAsDouble(defensive, "mana_shield_ratio", 0),
                 GsonHelper.getAsInt(defensive, "resistance_ticks", 0),
-                GsonHelper.getAsDouble(defensive, "resistance_bonus", 0));
+                GsonHelper.getAsDouble(defensive, "resistance_bonus", 0),
+                GsonHelper.getAsInt(defensive, "damage_reduction_ticks", 0),
+                GsonHelper.getAsDouble(defensive, "damage_reduction_ratio", 0));
         return new SkillDefinition.Hit(GsonHelper.getAsInt(root, "timing_tick"),
                 GsonHelper.getAsDouble(root, "base_damage", 0), GsonHelper.getAsDouble(root, "coefficient", 1),
                 GsonHelper.getAsDouble(root, "radius", 0), value(RpgPowerType.class, root, "power_type", RpgPowerType.NONE),

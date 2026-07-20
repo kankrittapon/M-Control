@@ -1,17 +1,18 @@
 # Project Phase Status
 
-Checkpoint date: 2026-07-19
+Checkpoint date: 2026-07-20
 
 | Phase | Status | Notes |
 | --- | --- | --- |
 | World Core Combat Foundation | Complete | Shared damage, protection, CC, Smash, Status, Mob profiles |
 | Skill Runtime Foundation | Complete | State machine, resources, cooldowns, targeting, projectile and links |
-| Skill Catalog And Progression | Complete foundation | 32 Wizard Main entries: 19 playable, 13 metadata-only |
+| Skill Catalog And Progression | Complete foundation | 32 Wizard Main entries: 20 playable, 12 metadata-only |
 | Phase 5 Wizard Main Batch A | Acceptance | 8/8 stable skills have playable combat definitions |
-| Phase 6 Wizard Main Batch B | In progress | Implemented through Magical Shield; Resurrection safely deferred |
+| Phase 6 Wizard Main Batch B | In progress | Implemented through Protected Area; Resurrection safely deferred |
 | Skill Tree UI | Not started | Begins after server progression and enough production skills are stable |
 | Action Bar And Native Inputs | Not started | Native combos and quick slots must call the same stable skill ID |
 | GeckoLib Integration | Planned | See `AnimationP.md`; presentation must not control damage timing |
+| Vanilla Combat Bridge | A-F complete | Shared protection, Perfect Guard, enchant policy, mod API, debug probes, and live acceptance |
 
 ## Phase 5 Batch A
 
@@ -54,9 +55,11 @@ remains metadata-only because combat CC downed state cannot represent death or c
 Magical Shield I-IV adds a generic timed defensive payload. Current ranks redirect 10/15/20/25%
 of incoming damage to MP for 60 seconds and add 12/18/24/30% CC Resistance for 30 seconds. Tagged
 RPG and vanilla damage share one absorption service and cannot charge MP twice.
+Protected Area I-V adds generic timed area damage reduction: 50% for 4/5/6/7/8 seconds to self and
+up to 10 nearby player allies, with Super Armor during the cast.
 
-Latest automated checkpoint: 73 unit tests passed, `build` passed, and all 14 required GameTests
-passed. Runtime reload accepted 85 definitions across 28 stable skill IDs.
+Latest automated checkpoint: 79 unit tests passed, `build` passed, and all 18 required GameTests
+passed. Runtime reload accepted 90 definitions across 29 stable skill IDs.
 
 Checkpoint details: `docs/PHASE6_CHECKPOINT_2026-07-19.md`.
 

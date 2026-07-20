@@ -36,21 +36,25 @@ Updated: 2026-07-19
 
 ## Phase 6 Skill Work
 
-- Expanded Wizard Main to 19 playable entries and 13 metadata-only entries.
+- Expanded Wizard Main to 20 playable entries and 12 metadata-only entries.
 - Added generic heal-only targeting for Healing Aura I-V and three-pulse support AoE for Healing
   Lighthouse I-IV, including separate caster/ally HP values and MP recovery.
 - Added a standalone Resurrection lifecycle skeleton and kept the skill unplayable until a real
   dead/downed-player flow exists.
 - Implemented Magical Shield I-IV through a generic defensive payload: damage-to-MP conversion,
   insufficient-MP fallback, timed CC Resistance, vanilla/RPG damage integration, and debug logs.
-- Updated the explicit playable skill budget to 3189 SP.
+- Implemented Protected Area I-V with generic timed damage reduction for self and nearby allies.
+- Completed the Vanilla Combat Bridge through Phase F: shared impact classification and protection
+  resolution, derived Perfect Guard, RPG-combat enchant policy, compatibility events, deterministic
+  impact probes, and live Zombie/Zoglin, Skeleton, and Creeper acceptance.
+- Updated the explicit playable skill budget to 3257 SP.
 
 ## Verification
 
-- Latest `gradlew test`: 73 tests passed.
+- Latest `gradlew test`: 79 tests passed.
 - Latest `gradlew build`: passed.
-- Latest `gradlew runGameTestServer`: all 14 required tests passed.
-- Runtime loaded 85 definitions across 28 stable skill IDs and 32 catalog entries
-  (`19 playable`, `13 metadata-only`).
+- Latest `gradlew runGameTestServer`: all 18 required tests passed.
+- Runtime loaded 90 definitions across 29 stable skill IDs and 32 catalog entries
+  (`20 playable`, `12 metadata-only`).
 
 Current continuation point: `TASK.md`.

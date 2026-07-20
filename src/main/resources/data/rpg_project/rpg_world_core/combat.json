@@ -5,6 +5,9 @@
     "maximum_hit_chance": 0.95,
     "maximum_damage_reduction": 0.8
   },
+  "observability": {
+    "log_impact_decisions": true
+  },
   "protection": {
     "frontal_guard_arc_degrees": 180.0,
     "guard_damage_scale": 1.0,
